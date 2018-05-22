@@ -52,10 +52,7 @@ func Run(param Param, verify bool, stdout io.Writer) error {
 			}
 
 			newChecksums, err := dirchecksum.ChecksumsForDirAfterAction(val.OutputDir, func(dir string) error {
-				if err := amalgomate.Run(cfg, dir, val.Pkg); err != nil {
-					return err
-				}
-				return nil
+				return amalgomate.Run(cfg, dir, val.Pkg)
 			})
 			if err != nil {
 				return errors.Wrapf(err, "amalgomate verify failed for %s", k)
