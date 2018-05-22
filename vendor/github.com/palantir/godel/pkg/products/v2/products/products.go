@@ -19,13 +19,12 @@ import (
 	"os/exec"
 	"path"
 	"runtime"
-	"strconv"
 	"strings"
 )
 
 // List returns a slice that contains all of the products in the project.
 func List() ([]string, error) {
-	gödelw, err := newGodelwRunner()
+	gödelw, err := newGödelwRunner()
 	if err != nil {
 		return nil, err
 	}
@@ -39,31 +38,22 @@ func List() ([]string, error) {
 // Bin returns the path to the executable for the given product for the current OS/Architecture, building the executable
 // using "godelw build" if the executable does not already exist or is not up-to-date.
 func Bin(product string) (string, error) {
-	godelw, err := newGodelwRunner()
+	gödelw, err := newGödelwRunner()
 	if err != nil {
 		return "", err
 	}
+	productBuildID := product + "." + runtime.GOOS + "-" + runtime.GOARCH
 
-	// return error if version is too new
-	majorVersion, err := majorVersion(godelw)
-	if err != nil {
-		return "", err
-	}
-	if majorVersion >= 2 {
-		return "", fmt.Errorf("this package does not support godel with major version >=2, but was %d: use v2 of the library instead", majorVersion)
-	}
-
-	currOSArchFlag := fmt.Sprintf("--os-arch=%s-%s", runtime.GOOS, runtime.GOARCH)
-	requiresBuildOutput, err := godelw.run("artifacts", "build", "--absolute", currOSArchFlag, "--requires-build", product)
+	requiresBuildOutput, err := gödelw.run("artifacts", "build", "--absolute", "--requires-build", productBuildID)
 	if err != nil {
 		return "", err
 	}
 	if requiresBuildOutput != "" {
-		if _, err := godelw.run("build", currOSArchFlag, product); err != nil {
+		if _, err := gödelw.run("build", productBuildID); err != nil {
 			return "", err
 		}
 	}
-	binPath, err := godelw.run("artifacts", "build", "--absolute", currOSArchFlag, product)
+	binPath, err := gödelw.run("artifacts", "build", "--absolute", productBuildID)
 	if err != nil {
 		return "", err
 	}
@@ -76,25 +66,25 @@ func Bin(product string) (string, error) {
 // Dist builds the distribution for the specified product using the "godelw dist" command and returns the path to the
 // created distribution artifact.
 func Dist(product string) (string, error) {
-	godelw, err := newGodelwRunner()
+	gödelw, err := newGödelwRunner()
 	if err != nil {
 		return "", err
 	}
-	if _, err := godelw.run("dist", product); err != nil {
+	if _, err := gödelw.run("dist", product); err != nil {
 		return "", err
 	}
-	return godelw.run("artifacts", "dist", "--absolute", product)
+	return gödelw.run("artifacts", "dist", "--absolute", product)
 }
 
-type godelwRunner interface {
+type gödelwRunner interface {
 	run(args ...string) (string, error)
 }
 
-type godelwRunnerStruct struct {
+type gödelwRunnerStruct struct {
 	path string
 }
 
-func (g *godelwRunnerStruct) run(args ...string) (string, error) {
+func (g *gödelwRunnerStruct) run(args ...string) (string, error) {
 	cmd := exec.Command(g.path, args...)
 	output, err := cmd.CombinedOutput()
 	outputStr := strings.TrimSpace(string(output))
@@ -104,37 +94,17 @@ func (g *godelwRunnerStruct) run(args ...string) (string, error) {
 	return outputStr, err
 }
 
-func newGodelwRunner() (godelwRunner, error) {
-	path, err := godelwPath()
+func newGödelwRunner() (gödelwRunner, error) {
+	path, err := gödelwPath()
 	if err != nil {
 		return nil, err
 	}
-	return &godelwRunnerStruct{
+	return &gödelwRunnerStruct{
 		path: path,
 	}, nil
 }
 
-func majorVersion(r godelwRunner) (int, error) {
-	versionOutput, err := r.run("version")
-	if err != nil {
-		return -1, err
-	}
-	parts := strings.Split(versionOutput, " ")
-	if len(parts) < 3 {
-		return -1, fmt.Errorf("output of version must have at least 3 ' '-separated parts, but was %q", versionOutput)
-	}
-	versionParts := strings.Split(parts[2], ".")
-	if len(versionParts) < 3 {
-		return -1, fmt.Errorf("version must have at least 3 '.'-separated parts, but was %q", parts[2])
-	}
-	majorVersion, err := strconv.Atoi(versionParts[0])
-	if err != nil {
-		return -1, fmt.Errorf("unable to parse %q as integer: %v", versionParts[0], err)
-	}
-	return majorVersion, nil
-}
-
-func godelwPath() (string, error) {
+func gödelwPath() (string, error) {
 	projectDir, err := projectDir()
 	if err != nil {
 		return "", err
