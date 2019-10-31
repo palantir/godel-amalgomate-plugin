@@ -1,3 +1,7 @@
+<p align="right">
+<a href="https://autorelease.general.dmz.palantir.tech/palantir/godel-amalgomate-plugin"><img src="https://img.shields.io/badge/Perform%20an-Autorelease-success.svg" alt="Autorelease"></a>
+</p>
+
 amalgomate-plugin
 =================
 `amalgomate-plugin` is a [godel](https://github.com/palantir/godel) plugin for amalgomate. The plugin runs `amalgomate` based on provided configuration. It also runs as part of the `--verify` task and verifies that the running the task would not alter the content of the output directory.
