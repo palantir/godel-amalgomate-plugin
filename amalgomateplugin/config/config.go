@@ -8,7 +8,7 @@ import (
 	"sort"
 
 	"github.com/palantir/godel-amalgomate-plugin/amalgomateplugin"
-	"github.com/palantir/godel-amalgomate-plugin/amalgomateplugin/config/internal/v0"
+	v0 "github.com/palantir/godel-amalgomate-plugin/amalgomateplugin/config/internal/v0"
 )
 
 type Config v0.Config

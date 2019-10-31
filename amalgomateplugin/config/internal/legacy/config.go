@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 
-	"github.com/palantir/godel-amalgomate-plugin/amalgomateplugin/config/internal/v0"
+	v0 "github.com/palantir/godel-amalgomate-plugin/amalgomateplugin/config/internal/v0"
 )
 
 type ConfigWithLegacy struct {
