@@ -1,0 +1,8 @@
+go mod operation failed. This may mean that there are legitimate dependency issues with the "go.mod" definition in the repository and the updates performed by the gomod check. This branch can be cloned locally to debug the issue.
+
+Command that caused error:
+./godelw exec -- go get github.com/spf13/cobra@upgrade
+
+Output:
+go get github.com/spf13/cobra@upgrade: module github.com/spf13/cobra: Get "https://proxy.golang.org/github.com/spf13/cobra/@v/list": dial tcp 142.250.80.17:443: i/o timeout
+Error: exit status 1
