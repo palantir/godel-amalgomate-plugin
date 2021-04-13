@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/palantir/amalgomate/amalgomate"
-	"github.com/palantir/godel/pkg/dirchecksum"
+	"github.com/palantir/godel/v2/pkg/dirchecksum"
 	"github.com/pkg/errors"
 )
 
