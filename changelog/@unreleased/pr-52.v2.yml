@@ -1,0 +1,9 @@
+type: feature
+feature:
+  description: |-
+    Updates amalgomate to version that operates on modules.
+    Makes it so that plugin supports amalgomating based on
+    modules. Also makes it such that plugin will not operate
+    on non-module projects.
+  links:
+  - https://github.com/palantir/godel-amalgomate-plugin/pull/52
