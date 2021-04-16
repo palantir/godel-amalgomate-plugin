@@ -1,0 +1,5 @@
+type: fix
+fix:
+  description: Updates amalgomate to v1.7.1. Adds fix for issue where amalgomate would not always work for vendored dependencies.
+  links:
+  - https://github.com/palantir/godel-amalgomate-plugin/pull/57
