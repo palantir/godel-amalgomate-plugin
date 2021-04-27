@@ -7,12 +7,11 @@ package config_test
 import (
 	"testing"
 
+	"github.com/palantir/godel-amalgomate-plugin/amalgomateplugin"
+	"github.com/palantir/godel-amalgomate-plugin/amalgomateplugin/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
-
-	"github.com/palantir/godel-amalgomate-plugin/amalgomateplugin"
-	"github.com/palantir/godel-amalgomate-plugin/amalgomateplugin/config"
 )
 
 func TestReadConfig(t *testing.T) {

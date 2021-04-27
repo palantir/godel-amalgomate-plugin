@@ -8,12 +8,11 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/palantir/godel-amalgomate-plugin/amalgomateplugin"
+	"github.com/palantir/godel-amalgomate-plugin/amalgomateplugin/config"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
-
-	"github.com/palantir/godel-amalgomate-plugin/amalgomateplugin"
-	"github.com/palantir/godel-amalgomate-plugin/amalgomateplugin/config"
 )
 
 var (
