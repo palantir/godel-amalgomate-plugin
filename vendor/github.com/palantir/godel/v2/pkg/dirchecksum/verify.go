@@ -16,9 +16,8 @@ package dirchecksum
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 
 	"github.com/termie/go-shutil"
 )
@@ -57,7 +56,7 @@ func ChecksumsForDirAfterAction(dir string, action func(dir string) error) (Chec
 
 	// copy original directory to temporary location
 	var err error
-	origDirCopy, err = createTmpDirPath(path.Dir(dir))
+	origDirCopy, err = createTmpDirPath(filepath.Dir(dir))
 	if err != nil {
 		return ChecksumSet{}, err
 	}
@@ -66,7 +65,7 @@ func ChecksumsForDirAfterAction(dir string, action func(dir string) error) (Chec
 	}
 
 	// move original directory to temporary location
-	origDirMoved, err = createTmpDirPath(path.Dir(dir))
+	origDirMoved, err = createTmpDirPath(filepath.Dir(dir))
 	if err != nil {
 		return ChecksumSet{}, err
 	}
@@ -92,7 +91,7 @@ func ChecksumsForDirAfterAction(dir string, action func(dir string) error) (Chec
 }
 
 func createTmpDirPath(parentDir string) (string, error) {
-	tmpDir, err := ioutil.TempDir(parentDir, "amalgomate-verify-")
+	tmpDir, err := os.MkdirTemp(parentDir, "amalgomate-verify-")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temporary directory: %v", err)
 	}
