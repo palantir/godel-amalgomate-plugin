@@ -1,0 +1,6 @@
+type: feature
+feature:
+  description: Updates the version of amalgomate to v1.8.0 to enable amalgomation
+    of projects that use Go 1.17-style vendoring.
+  links:
+  - https://github.com/palantir/godel-amalgomate-plugin/pull/79
