@@ -1,0 +1,8 @@
+type: fix
+fix:
+  description: |-
+    Fixes issue where vendored modules would not be properly copied
+    if the path to any Go files in the module contained a directory
+    that did not contain any Go files.
+  links:
+  - https://github.com/palantir/godel-amalgomate-plugin/pull/80
