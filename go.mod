@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/palantir/amalgomate v1.9.0
 	github.com/palantir/godel/pkg/products/v2 v2.0.0
-	github.com/palantir/godel/v2 v2.41.0
+	github.com/palantir/godel/v2 v2.42.0
 	github.com/palantir/pkg/cobracli v1.0.1
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.2.1
@@ -41,7 +41,7 @@ require (
 	github.com/rogpeppe/go-internal v1.7.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/termie/go-shutil v0.0.0-20140729215957-bcacb06fecae // indirect
-	github.com/ulikunitz/xz v0.5.6 // indirect
+	github.com/ulikunitz/xz v0.5.10 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	golang.org/x/mod v0.4.2 // indirect
 	golang.org/x/sys v0.0.0-20210510120138-977fb7262007 // indirect
