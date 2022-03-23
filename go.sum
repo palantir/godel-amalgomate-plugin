@@ -280,13 +280,11 @@ github.com/nmiyake/pkg/errorstringer v1.1.0/go.mod h1:3c/Luj1o1XtUmdqL6QRKnBnkfB
 github.com/nmiyake/pkg/gofiles v1.0.0/go.mod h1:F+0i7sA0xTtovYCTcEutbEbFbW2vAQMm2cyHcXFpAok=
 github.com/nmiyake/pkg/gofiles v1.0.2/go.mod h1:rfhzzsHUENf2qA2R9A8HwDMpA3SDUuB7pQ+taFJSMgM=
 github.com/nmiyake/pkg/gofiles v1.2.0 h1:L0LWMfnHyMxiLP2Cuqno163/4zK73FscEsNd7sHo2M4=
-github.com/nmiyake/pkg/gofiles v1.2.0/go.mod h1:aPXiVvXPwxNanRNuFIRVPYn6eTC4qxjDZni6VNNlzMY=
 github.com/nwaples/rardecode v1.0.0 h1:r7vGuS5akxOnR4JQSkko62RJ1ReCMXxQRPtxsiFMBOs=
 github.com/nwaples/rardecode v1.0.0/go.mod h1:5DzqNKiOdpKKBH87u8VlvAnPZMXcGRhxWkRpHbbfGS0=
 github.com/oklog/ulid v1.3.1/go.mod h1:CirwcVhetQ6Lv90oh/F+FBtV6XMibvdAFo93nm5qn4U=
 github.com/palantir/amalgomate v1.9.0 h1:GYjGP0YytgQKN6J5vbYzQD49090QtBwbuL1Fi2n96A4=
 github.com/palantir/amalgomate v1.9.0/go.mod h1:BxUA4DvDdTjX2hrmA2nzhnrg+6GTbBTHDr1hzzN+c8M=
-github.com/palantir/distgo/pkg/git v1.0.0/go.mod h1:eXrr3SOmf/sWTYmtiubYVxSaVegTlMGgRgBUFMFFedw=
 github.com/palantir/godel/pkg/products/v2 v2.0.0 h1:E3DuAEA1yotLLDQt7vIrYRapRwXRyW6u8Yuq2p/qyLs=
 github.com/palantir/godel/pkg/products/v2 v2.0.0/go.mod h1:SaLUycZLVP5qV6mL9MWG3jkX4dS23lJnzpubTGAV4FU=
 github.com/palantir/godel/v2 v2.53.0 h1:rRn8qGdz7yxZkhI+iik8p1isEqa8kRxLqDNkg4qP+B0=
@@ -296,15 +294,12 @@ github.com/palantir/pkg v1.0.1/go.mod h1:Eo6Jl0UXfT+65sLXJOcU9duu0WPvKsWFXCb0dE5
 github.com/palantir/pkg/cobracli v1.0.1/go.mod h1:UfYLriXzhyx7a3r+3UTD+kbX+xASjr9kSK05fC85NyI=
 github.com/palantir/pkg/cobracli v1.1.0 h1:dfBDc+FSrBnkNv96Ew9ROeks5JI4NxwD//Raas+zd6Y=
 github.com/palantir/pkg/cobracli v1.1.0/go.mod h1:eaiBi7zgXa8AXlxH+hV4TNQlXbYY36xSFE9DdArG1MM=
-github.com/palantir/pkg/gittest v1.0.0/go.mod h1:M49S4TsX5sh7lYJmOF+pFzcB4fJNOylzN8tOdpSq958=
 github.com/palantir/pkg/gittest v1.0.1 h1:SMGj38NLGzEpW1LFfGAitWprywHorJTmfOpJS/9kv/Y=
-github.com/palantir/pkg/gittest v1.0.1/go.mod h1:Rhmt7mtHdp+6c3gWZDAsXTBk5AUZwnfahsw5w6WWrbc=
 github.com/palantir/pkg/matcher v1.0.0/go.mod h1:QCvRrP7D1ZwHguKkovtcPbr0i2L8GYXQxq9EUn/ME6s=
 github.com/palantir/pkg/matcher v1.0.1 h1:+Q9oIaR7+jCni9Z+ZTAWXl71BBTpE6r+4t4D/FXwp4g=
 github.com/palantir/pkg/matcher v1.0.1/go.mod h1:sd+kIUk+WUutEFrOkUFpSkxM9xJ49TnOQJ5c4UQeHUI=
 github.com/palantir/pkg/pkgpath v1.0.1 h1:PEr0ZVJ+BCoC+Va2ean1wYz0bd3cv3HjhCoEIEVV5TU=
 github.com/palantir/pkg/pkgpath v1.0.1/go.mod h1:kE+G+qpKWqWwUugXunfaSVetL65By6D2XlNv6ULXG5U=
-github.com/palantir/pkg/signals v1.0.1/go.mod h1:L5/ZeqXa2QjdxpjqcMQ4LtZL3xCp1FMEhGjMHyLDb2g=
 github.com/palantir/pkg/specdir v1.0.1 h1:h3FxhAYZHUAuvZXF5O40pyhjKjm4JlcHYRogIVNw3Ew=
 github.com/palantir/pkg/specdir v1.0.1/go.mod h1:RJN42E0F1s4wHrNuXoT0cG4erUigMs0pjpBpmpijb0c=
 github.com/pascaldekloe/goe v0.0.0-20180627143212-57f6aae5913c/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
@@ -627,7 +622,6 @@ golang.org/x/tools v0.0.0-20201208233053-a543418bbed2/go.mod h1:emZCQorbCU4vsT4f
 golang.org/x/tools v0.0.0-20210105154028-b0ab187a4818/go.mod h1:emZCQorbCU4vsT4fOWvOPXz4eW1wZW4PmDk9uLelYpA=
 golang.org/x/tools v0.0.0-20210106214847-113979e3529a/go.mod h1:emZCQorbCU4vsT4fOWvOPXz4eW1wZW4PmDk9uLelYpA=
 golang.org/x/tools v0.1.0/go.mod h1:xkSsbof2nBLbhDlRMhhhyNLN/zl3eTqcnHD5viDpcZ0=
-golang.org/x/tools v0.1.1/go.mod h1:o0xws9oXOQQZyjljx8fwUC0k7L1pTE6eaCbjGeHmOkk=
 golang.org/x/tools v0.1.2/go.mod h1:o0xws9oXOQQZyjljx8fwUC0k7L1pTE6eaCbjGeHmOkk=
 golang.org/x/tools v0.1.5 h1:ouewzE6p+/VEB31YYnTbEJdi8pFqKp4P4n85vwo3DHA=
 golang.org/x/tools v0.1.5/go.mod h1:o0xws9oXOQQZyjljx8fwUC0k7L1pTE6eaCbjGeHmOkk=
