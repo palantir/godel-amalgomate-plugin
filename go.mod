@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/palantir/amalgomate v1.9.0
 	github.com/palantir/godel/pkg/products/v2 v2.0.0
-	github.com/palantir/godel/v2 v2.55.0
+	github.com/palantir/godel/v2 v2.56.0
 	github.com/palantir/pkg/cobracli v1.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.4.0
