@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/palantir/amalgomate v1.9.0
 	github.com/palantir/godel/pkg/products/v2 v2.0.0
-	github.com/palantir/godel/v2 v2.57.0
+	github.com/palantir/godel/v2 v2.58.0
 	github.com/palantir/pkg/cobracli v1.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.4.0
@@ -50,5 +50,5 @@ require (
 	golang.org/x/tools v0.1.5 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
