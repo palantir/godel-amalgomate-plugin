@@ -35,9 +35,9 @@ require (
 	github.com/nmiyake/pkg/errorstringer v1.1.0 // indirect
 	github.com/nwaples/rardecode v1.0.0 // indirect
 	github.com/palantir/pkg v1.0.1 // indirect
-	github.com/palantir/pkg/matcher v1.0.1 // indirect
-	github.com/palantir/pkg/pkgpath v1.0.1 // indirect
-	github.com/palantir/pkg/specdir v1.0.1 // indirect
+	github.com/palantir/pkg/matcher v1.1.0 // indirect
+	github.com/palantir/pkg/pkgpath v1.1.0 // indirect
+	github.com/palantir/pkg/specdir v1.1.0 // indirect
 	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.7.0 // indirect
