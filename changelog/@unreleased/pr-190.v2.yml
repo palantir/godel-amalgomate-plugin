@@ -1,0 +1,6 @@
+type: improvement
+improvement:
+  description: Updates amalgomate dependency to v1.23.0 to fix issues with amalgomation
+    from vendor directories when using Go 1.20.
+  links:
+  - https://github.com/palantir/godel-amalgomate-plugin/pull/190
