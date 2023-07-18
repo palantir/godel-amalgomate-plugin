@@ -55,8 +55,8 @@ github.com/nmiyake/pkg/errorstringer v1.1.0/go.mod h1:3c/Luj1o1XtUmdqL6QRKnBnkfB
 github.com/nmiyake/pkg/gofiles v1.2.0 h1:L0LWMfnHyMxiLP2Cuqno163/4zK73FscEsNd7sHo2M4=
 github.com/nwaples/rardecode v1.0.0 h1:r7vGuS5akxOnR4JQSkko62RJ1ReCMXxQRPtxsiFMBOs=
 github.com/nwaples/rardecode v1.0.0/go.mod h1:5DzqNKiOdpKKBH87u8VlvAnPZMXcGRhxWkRpHbbfGS0=
-github.com/palantir/amalgomate v1.23.0 h1:m9iVIq1URxfBRO84TOy4w3yX/wOhJs3GBwsDC2N6DyQ=
-github.com/palantir/amalgomate v1.23.0/go.mod h1:6gjjriBsKzuryrdOq4r1j1lHsjeg3mCQvfVct6Djdbs=
+github.com/palantir/amalgomate v1.31.0 h1:Q9ni/opmYagifXoW/p+cBPA1EAedXQomk74M6eS2yzE=
+github.com/palantir/amalgomate v1.31.0/go.mod h1:y0K6GE6H/UWCZBmuaiB8OJTJME03IQWpShLTNb+L7fs=
 github.com/palantir/godel/pkg/products/v2 v2.0.0 h1:E3DuAEA1yotLLDQt7vIrYRapRwXRyW6u8Yuq2p/qyLs=
 github.com/palantir/godel/pkg/products/v2 v2.0.0/go.mod h1:SaLUycZLVP5qV6mL9MWG3jkX4dS23lJnzpubTGAV4FU=
 github.com/palantir/godel/v2 v2.88.0 h1:/3Tz3VUY2epPZywS/1RTBVNe7STy78mRiq8soaTcxB0=
