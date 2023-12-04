@@ -3,9 +3,9 @@ module github.com/palantir/godel-amalgomate-plugin
 go 1.21
 
 require (
-	github.com/palantir/amalgomate v1.34.0
+	github.com/palantir/amalgomate v1.35.0
 	github.com/palantir/godel/pkg/products/v2 v2.0.0
-	github.com/palantir/godel/v2 v2.93.0
+	github.com/palantir/godel/v2 v2.95.0
 	github.com/palantir/pkg/cobracli v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.8.0
@@ -45,9 +45,9 @@ require (
 	github.com/termie/go-shutil v0.0.0-20140729215957-bcacb06fecae // indirect
 	github.com/ulikunitz/xz v0.5.10 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
-	golang.org/x/mod v0.13.0 // indirect
-	golang.org/x/sys v0.13.0 // indirect
-	golang.org/x/tools v0.14.0 // indirect
+	golang.org/x/mod v0.14.0 // indirect
+	golang.org/x/sys v0.14.0 // indirect
+	golang.org/x/tools v0.16.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
