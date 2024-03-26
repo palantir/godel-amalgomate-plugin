@@ -3,7 +3,7 @@ module github.com/palantir/godel-amalgomate-plugin
 go 1.21
 
 require (
-	github.com/palantir/amalgomate v1.38.0
+	github.com/palantir/amalgomate v1.39.0
 	github.com/palantir/godel/pkg/products/v2 v2.0.0
 	github.com/palantir/godel/v2 v2.105.0
 	github.com/palantir/pkg/cobracli v1.2.0
