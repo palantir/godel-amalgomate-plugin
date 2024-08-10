@@ -66,13 +66,13 @@ github.com/nmiyake/pkg/errorstringer
 # github.com/nwaples/rardecode v1.0.0
 ## explicit
 github.com/nwaples/rardecode
-# github.com/palantir/amalgomate v1.42.0
+# github.com/palantir/amalgomate v1.43.0
 ## explicit; go 1.21
 github.com/palantir/amalgomate/amalgomate
 # github.com/palantir/godel/pkg/products/v2 v2.0.0
 ## explicit; go 1.13
 github.com/palantir/godel/pkg/products/v2
-# github.com/palantir/godel/v2 v2.113.0
+# github.com/palantir/godel/v2 v2.114.0
 ## explicit; go 1.22
 github.com/palantir/godel/v2/framework/artifactresolver
 github.com/palantir/godel/v2/framework/builtintasks
