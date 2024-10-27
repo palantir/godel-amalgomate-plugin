@@ -3,7 +3,7 @@ module github.com/palantir/godel-amalgomate-plugin
 go 1.23.0
 
 require (
-	github.com/palantir/amalgomate v1.44.0
+	github.com/palantir/amalgomate v1.45.0
 	github.com/palantir/godel/pkg/products/v2 v2.0.0
 	github.com/palantir/godel/v2 v2.120.0
 	github.com/palantir/pkg/cobracli v1.2.0
@@ -32,6 +32,7 @@ require (
 	github.com/nmiyake/pkg/dirs v1.1.0 // indirect
 	github.com/nmiyake/pkg/errorstringer v1.1.0 // indirect
 	github.com/nwaples/rardecode v1.1.0 // indirect
+	github.com/otiai10/copy v1.14.0 // indirect
 	github.com/palantir/pkg v1.1.0 // indirect
 	github.com/palantir/pkg/matcher v1.2.0 // indirect
 	github.com/palantir/pkg/pkgpath v1.3.0 // indirect
