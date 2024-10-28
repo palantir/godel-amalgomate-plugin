@@ -68,8 +68,8 @@ github.com/nwaples/rardecode
 # github.com/otiai10/copy v1.14.0
 ## explicit; go 1.18
 github.com/otiai10/copy
-# github.com/palantir/amalgomate v1.46.0
-## explicit; go 1.22.0
+# github.com/palantir/amalgomate v1.47.0
+## explicit; go 1.23.0
 github.com/palantir/amalgomate/amalgomate
 # github.com/palantir/godel/pkg/products/v2 v2.0.0
 ## explicit; go 1.13
