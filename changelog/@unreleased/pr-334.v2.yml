@@ -1,0 +1,6 @@
+type: improvement
+improvement:
+  description: Updates amalgomate v0.146.0 to ensure that permissions are properly
+    preserved.
+  links:
+  - https://github.com/palantir/godel-amalgomate-plugin/pull/334
