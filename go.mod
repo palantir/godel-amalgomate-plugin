@@ -5,7 +5,7 @@ go 1.24.0
 require (
 	github.com/palantir/amalgomate v1.49.0
 	github.com/palantir/godel/pkg/products/v2 v2.0.0
-	github.com/palantir/godel/v2 v2.131.0
+	github.com/palantir/godel/v2 v2.132.0
 	github.com/palantir/pkg/cobracli v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.9.1
