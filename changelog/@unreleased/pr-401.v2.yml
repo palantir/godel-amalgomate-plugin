@@ -1,0 +1,8 @@
+type: improvement
+improvement:
+  description: |-
+    Updates `amalgomate` to v1.50.0.
+
+    Adds support for the "do-not-rewrite-flag-import" configuration and fixes issue with processing packages that do not have Go files.
+  links:
+  - https://github.com/palantir/godel-amalgomate-plugin/pull/401
