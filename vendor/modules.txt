@@ -76,8 +76,8 @@ github.com/otiai10/copy
 ## explicit; go 1.18
 github.com/otiai10/mint
 github.com/otiai10/mint/mquery
-# github.com/palantir/amalgomate v1.51.0
-## explicit; go 1.24.0
+# github.com/palantir/amalgomate v1.52.0
+## explicit; go 1.25.0
 github.com/palantir/amalgomate/amalgomate
 # github.com/palantir/godel/pkg/products/v2 v2.0.0
 ## explicit; go 1.13
