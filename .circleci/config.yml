@@ -5,7 +5,3423 @@
 version: 2.1
 
 orbs:
-  go-jobs: palantir/go-jobs@0.7.0
+  go-jobs:
+    version: 2.1
+    description: |
+      Orb that defines jobs to use for running go workflows.
+      
+      Makes use of the palantir/go-dist and palantir/godel orbs
+      to define jobs that can be used by CircleCI workflows to execute standard
+      builds for projects that build go libraries, go distributions, and other kinds
+      of projects.
+    display:
+      home_url: https://github.com/palantir
+      source_url: https://github.com/palantir
+    orbs:
+      go-dist:
+        version: 2.1
+        description: |
+          Orb for setting up go distributions. Provides commands for downloading, installing, and caching go distributions.
+          Also provides commands for savings and restoring cache for go builds and go modules.
+        display:
+          home_url: https://github.com/palantir
+          source_url: https://github.com/palantir
+        commands:
+          go_build_cache_restore:
+            description: |
+              Restores the go build cache.
+            parameters:
+              cache_key_prefix:
+                default: v1
+                description: |
+                  The prefix for the cache key. Is generally considered immutable, but the value can be changed to intentionally
+                  invalidate the cache.
+                type: string
+              cache_location:
+                default: ~/.cache/go-build
+                description: |
+                  The location of the go build cache directory.
+                type: string
+              custom_cache_restore_steps:
+                default: [ ]
+                description: |
+                  The steps that are run to perform the "cache restore" operation if the "custom_cache_restore_steps_enabled"
+                  parameter is true. Note that the provided steps are run directly: the machinations of orbs makes it such that it
+                  is not possible to pass the parameters provided to this command to the value of this step. Thus, if this parameter
+                  is specified, in most scenarios the caller should also explicitly specify the "cache_key_prefix",
+                  "cache_location", and "go_sum_file" parameters, and the step(s) provided to this parameter should make use of
+                  those same values.
+                type: steps
+              custom_cache_restore_steps_enabled:
+                default: false
+                description: |
+                  If true, indicates that the steps in "custom_cache_restore_steps" should be used for restoring cache.
+                  If false, runs the following step to perform the "cache restore" operation:
+                  
+                  - restore_cache:
+                      name: "go-dist/go_build_cache_restore: Restore go build cache"
+                      keys:
+                        - go-build-<< parameters.cache_key_prefix >>-<< parameters.cache_location >>-{{ checksum "<< parameters.go_sum_file >>" }}
+                  
+                  Ideally, this parameter should not be needed at all and the logic that is executed would be determined based on
+                  whether or not the "custom_cache_restore_steps" parameter is empty, but that is not currently possible in CircleCI.
+                type: boolean
+              go_command:
+                default: go
+                description: |
+                  The command to execute to run "go".
+                type: string
+              go_sum_file:
+                default: go.sum
+                description: |
+                  The path to the "go.sum" file. The checksum for this file is used as part of the cache key.
+                type: string
+            steps:
+              - run:
+                  command: |
+                    #!/bin/bash
+                    
+                    if [ -n "${PARAM_DEBUG_ORB}" ]; then
+                      set -x
+                    fi
+                    
+                    GO_COMMAND=${PARAM_GO_COMMAND}
+                    GO_ENV_ARG=${PARAM_GO_ENV_ARG}
+                    
+                    ACTUAL_CACHE_LOCATION=$("${GO_COMMAND}" env "${GO_ENV_ARG}")
+                    CANONICAL_ACTUAL_CACHE_LOCATION=${ACTUAL_CACHE_LOCATION}
+                    if [ -e "${CANONICAL_ACTUAL_CACHE_LOCATION}" ]; then
+                      CANONICAL_ACTUAL_CACHE_LOCATION=$(readlink -f "${CANONICAL_ACTUAL_CACHE_LOCATION}")
+                    fi
+                    
+                    # replace tilde with home directory
+                    JOB_CACHE_LOCATION=${PARAM_CACHE_LOCATION}
+                    JOB_CACHE_LOCATION="${JOB_CACHE_LOCATION/#\~/$HOME}"
+                    CANONICAL_JOB_CACHE_LOCATION=${JOB_CACHE_LOCATION}
+                    if [ -e "${CANONICAL_JOB_CACHE_LOCATION}" ]; then
+                      CANONICAL_JOB_CACHE_LOCATION=$(readlink -f "${CANONICAL_JOB_CACHE_LOCATION}")
+                    fi
+                    
+                    if [ "${CANONICAL_JOB_CACHE_LOCATION}" == "${CANONICAL_ACTUAL_CACHE_LOCATION}" ]; then
+                      echo "Cache location for job matched actual cache location: both are \"${CANONICAL_ACTUAL_CACHE_LOCATION}\""
+                    else
+                      echo "Cache location for job did not match actual cache location: \"${CANONICAL_JOB_CACHE_LOCATION}\" != \"${CANONICAL_ACTUAL_CACHE_LOCATION}\""
+                      exit 1
+                    fi
+                  environment:
+                    GOTOOLCHAIN: local
+                    PARAM_CACHE_LOCATION: << parameters.cache_location >>
+                    PARAM_GO_COMMAND: << parameters.go_command >>
+                    PARAM_GO_ENV_ARG: GOCACHE
+                  name: 'go-dist/go_build_cache_restore: Print expected location for go build cache'
+              - unless:
+                  condition: << parameters.custom_cache_restore_steps_enabled >>
+                  steps:
+                    - restore_cache:
+                        keys:
+                          - go-build-<< parameters.cache_key_prefix >>-<< parameters.cache_location >>-{{ checksum "<< parameters.go_sum_file >>" }}
+                        name: 'go-dist/go_build_cache_restore: Restore go build cache'
+              - when:
+                  condition: << parameters.custom_cache_restore_steps_enabled >>
+                  steps:
+                    - steps: << parameters.custom_cache_restore_steps >>
+              - run:
+                  command: |
+                    "${PARAM_GO_COMMAND}" clean -testcache
+                  environment:
+                    PARAM_GO_COMMAND: << parameters.go_command >>
+                  name: 'go-dist/go_build_cache_restore: Clean go test cache'
+          go_build_cache_save:
+            description: |
+              Saves the go build cache.
+            parameters:
+              cache_key_prefix:
+                default: v1
+                description: |
+                  The prefix for the cache key. Is generally considered immutable, but the value can be changed to intentionally
+                  invalidate the cache.
+                type: string
+              cache_location:
+                default: ~/.cache/go-build
+                description: |
+                  The location of the go build cache directory.
+                type: string
+              custom_cache_save_steps:
+                default: [ ]
+                description: |
+                  The steps that are run to perform the "cache save" operation if the "custom_cache_save_steps_enabled" parameter is
+                  true. Note that the provided steps are run directly: the machinations of orbs makes it such that it is not
+                  possible to pass the parameters provided to this command to the value of this step. Thus, if this parameter is
+                  specified, in most scenarios the caller should also explicitly specify the "cache_key_prefix", "go_os_arch", and
+                  "go_dists_cache_dir" parameters, and the step(s) provided to this parameter should make use of those same values.
+                type: steps
+              custom_cache_save_steps_enabled:
+                default: false
+                description: |
+                  If true, indicates that the steps in "custom_cache_save_steps" should be used for saving cache.
+                  If false, runs the following step to perform the "cache save" operation:
+                  
+                  - save_cache:
+                      name: "go-dist/go_build_cache_save: Save go build cache"
+                      key: go-build-<< parameters.cache_key_prefix >>-<< parameters.cache_location >>-{{ checksum "<< parameters.go_sum_file >>" }}
+                      paths:
+                        - << parameters.cache_location >>
+                  
+                  Ideally, this parameter should not be needed at all and the logic that is executed would be determined based on
+                  whether or not the "custom_cache_save_steps" parameter is empty, but that is not currently possible in CircleCI.
+                type: boolean
+              go_command:
+                default: go
+                description: |
+                  The command to execute to run "go".
+                type: string
+              go_sum_file:
+                default: go.sum
+                description: |
+                  The path to the "go.sum" file. The checksum for this file is used as part of the cache key.
+                type: string
+            steps:
+              - run:
+                  command: |
+                    #!/bin/bash
+                    
+                    if [ -n "${PARAM_DEBUG_ORB}" ]; then
+                      set -x
+                    fi
+                    
+                    GO_COMMAND=${PARAM_GO_COMMAND}
+                    GO_ENV_ARG=${PARAM_GO_ENV_ARG}
+                    
+                    ACTUAL_CACHE_LOCATION=$("${GO_COMMAND}" env "${GO_ENV_ARG}")
+                    CANONICAL_ACTUAL_CACHE_LOCATION=${ACTUAL_CACHE_LOCATION}
+                    if [ -e "${CANONICAL_ACTUAL_CACHE_LOCATION}" ]; then
+                      CANONICAL_ACTUAL_CACHE_LOCATION=$(readlink -f "${CANONICAL_ACTUAL_CACHE_LOCATION}")
+                    fi
+                    
+                    # replace tilde with home directory
+                    JOB_CACHE_LOCATION=${PARAM_CACHE_LOCATION}
+                    JOB_CACHE_LOCATION="${JOB_CACHE_LOCATION/#\~/$HOME}"
+                    CANONICAL_JOB_CACHE_LOCATION=${JOB_CACHE_LOCATION}
+                    if [ -e "${CANONICAL_JOB_CACHE_LOCATION}" ]; then
+                      CANONICAL_JOB_CACHE_LOCATION=$(readlink -f "${CANONICAL_JOB_CACHE_LOCATION}")
+                    fi
+                    
+                    if [ "${CANONICAL_JOB_CACHE_LOCATION}" == "${CANONICAL_ACTUAL_CACHE_LOCATION}" ]; then
+                      echo "Cache location for job matched actual cache location: both are \"${CANONICAL_ACTUAL_CACHE_LOCATION}\""
+                    else
+                      echo "Cache location for job did not match actual cache location: \"${CANONICAL_JOB_CACHE_LOCATION}\" != \"${CANONICAL_ACTUAL_CACHE_LOCATION}\""
+                      exit 1
+                    fi
+                  environment:
+                    GOTOOLCHAIN: local
+                    PARAM_CACHE_LOCATION: << parameters.cache_location >>
+                    PARAM_GO_COMMAND: << parameters.go_command >>
+                    PARAM_GO_ENV_ARG: GOCACHE
+                  name: 'go-dist/go_build_cache_save: Verify that go build cache directory location is correct'
+              - run:
+                  command: |
+                    "${PARAM_GO_COMMAND}" clean -testcache
+                  environment:
+                    PARAM_GO_COMMAND: << parameters.go_command >>
+                  name: 'go-dist/go_build_cache_save: Clean go test cache'
+              - unless:
+                  condition: << parameters.custom_cache_save_steps_enabled >>
+                  steps:
+                    - save_cache:
+                        key: go-build-<< parameters.cache_key_prefix >>-<< parameters.cache_location >>-{{ checksum "<< parameters.go_sum_file >>" }}
+                        name: 'go-dist/go_build_cache_save: Save go build cache'
+                        paths:
+                          - << parameters.cache_location >>
+              - when:
+                  condition: << parameters.custom_cache_save_steps_enabled >>
+                  steps:
+                    - steps: << parameters.custom_cache_save_steps >>
+          go_mod_cache_restore:
+            description: |
+              Restores the go module cache.
+            parameters:
+              cache_key_prefix:
+                default: v1
+                description: |
+                  The prefix for the cache key. Is generally considered immutable, but the value can be changed to intentionally
+                  invalidate the cache.
+                type: string
+              cache_location:
+                default: /go/pkg/mod
+                description: |
+                  The location of the go module cache directory.
+                type: string
+              custom_cache_restore_steps:
+                default: [ ]
+                description: |
+                  The steps that are run to perform the "cache restore" operation if the "custom_cache_restore_steps_enabled"
+                  parameter is true. Note that the provided steps are run directly: the machinations of orbs makes it such that it
+                  is not possible to pass the parameters provided to this command to the value of this step. Thus, if this parameter
+                  is specified, in most scenarios the caller should also explicitly specify the "cache_key_prefix",
+                  "cache_location", and "go_sum_file" parameters, and the step(s) provided to this parameter should make use of
+                  those same values.
+                type: steps
+              custom_cache_restore_steps_enabled:
+                default: false
+                description: |
+                  If true, indicates that the steps in "custom_cache_restore_steps" should be used for restoring cache.
+                  If false, runs the following step to perform the "cache restore" operation:
+                  
+                  - restore_cache:
+                      name: "go-dist/go_mod_cache_restore: Restore go module cache"
+                      keys:
+                        - go-mod-<< parameters.cache_key_prefix >>-<< parameters.cache_location >>-{{ checksum "<< parameters.go_sum_file >>" }}
+                  
+                  Ideally, this parameter should not be needed at all and the logic that is executed would be determined based on
+                  whether or not the "custom_cache_restore_steps" parameter is empty, but that is not currently possible in CircleCI.
+                type: boolean
+              go_command:
+                default: go
+                description: |
+                  The command to execute to run "go".
+                type: string
+              go_sum_file:
+                default: go.sum
+                description: |
+                  The path to the "go.sum" file. The checksum for this file is used as part of the cache key.
+                type: string
+            steps:
+              - run:
+                  command: |
+                    #!/bin/bash
+                    
+                    if [ -n "${PARAM_DEBUG_ORB}" ]; then
+                      set -x
+                    fi
+                    
+                    GO_COMMAND=${PARAM_GO_COMMAND}
+                    GO_ENV_ARG=${PARAM_GO_ENV_ARG}
+                    
+                    ACTUAL_CACHE_LOCATION=$("${GO_COMMAND}" env "${GO_ENV_ARG}")
+                    CANONICAL_ACTUAL_CACHE_LOCATION=${ACTUAL_CACHE_LOCATION}
+                    if [ -e "${CANONICAL_ACTUAL_CACHE_LOCATION}" ]; then
+                      CANONICAL_ACTUAL_CACHE_LOCATION=$(readlink -f "${CANONICAL_ACTUAL_CACHE_LOCATION}")
+                    fi
+                    
+                    # replace tilde with home directory
+                    JOB_CACHE_LOCATION=${PARAM_CACHE_LOCATION}
+                    JOB_CACHE_LOCATION="${JOB_CACHE_LOCATION/#\~/$HOME}"
+                    CANONICAL_JOB_CACHE_LOCATION=${JOB_CACHE_LOCATION}
+                    if [ -e "${CANONICAL_JOB_CACHE_LOCATION}" ]; then
+                      CANONICAL_JOB_CACHE_LOCATION=$(readlink -f "${CANONICAL_JOB_CACHE_LOCATION}")
+                    fi
+                    
+                    if [ "${CANONICAL_JOB_CACHE_LOCATION}" == "${CANONICAL_ACTUAL_CACHE_LOCATION}" ]; then
+                      echo "Cache location for job matched actual cache location: both are \"${CANONICAL_ACTUAL_CACHE_LOCATION}\""
+                    else
+                      echo "Cache location for job did not match actual cache location: \"${CANONICAL_JOB_CACHE_LOCATION}\" != \"${CANONICAL_ACTUAL_CACHE_LOCATION}\""
+                      exit 1
+                    fi
+                  environment:
+                    GOTOOLCHAIN: local
+                    PARAM_CACHE_LOCATION: << parameters.cache_location >>
+                    PARAM_GO_COMMAND: << parameters.go_command >>
+                    PARAM_GO_ENV_ARG: GOMODCACHE
+                  name: 'go-dist/go_mod_cache_restore: Print expected location for go module cache'
+              - unless:
+                  condition: << parameters.custom_cache_restore_steps_enabled >>
+                  steps:
+                    - restore_cache:
+                        keys:
+                          - go-mod-<< parameters.cache_key_prefix >>-<< parameters.cache_location >>-{{ checksum "<< parameters.go_sum_file >>" }}
+                        name: 'go-dist/go_mod_cache_restore: Restore go module cache'
+              - when:
+                  condition: << parameters.custom_cache_restore_steps_enabled >>
+                  steps:
+                    - steps: << parameters.custom_cache_restore_steps >>
+          go_mod_cache_save:
+            description: |
+              Saves the go module cache.
+            parameters:
+              cache_key_prefix:
+                default: v1
+                description: |
+                  The prefix for the cache key. Is generally considered immutable, but the value can be changed to intentionally
+                  invalidate the cache.
+                type: string
+              cache_location:
+                default: /go/pkg/mod
+                description: |
+                  The location of the go module cache directory.
+                type: string
+              custom_cache_save_steps:
+                default: [ ]
+                description: |
+                  The steps that are run to perform the "cache save" operation if the "custom_cache_save_steps_enabled" parameter is
+                  true. Note that the provided steps are run directly: the machinations of orbs makes it such that it is not
+                  possible to pass the parameters provided to this command to the value of this step. Thus, if this parameter is
+                  specified, in most scenarios the caller should also explicitly specify the "cache_key_prefix", "go_os_arch", and
+                  "go_dists_cache_dir" parameters, and the step(s) provided to this parameter should make use of those same values.
+                type: steps
+              custom_cache_save_steps_enabled:
+                default: false
+                description: |
+                  If true, indicates that the steps in "custom_cache_save_steps" should be used for saving cache.
+                  If false, runs the following step to perform the "cache save" operation:
+                  
+                  - save_cache:
+                      name: "go-dist/go_mod_cache_save: Save go module cache"
+                      key: go-mod-<< parameters.cache_key_prefix >>-<< parameters.cache_location >>-{{ checksum "<< parameters.go_sum_file >>" }}
+                      paths:
+                        - << parameters.cache_location >>
+                  
+                  Ideally, this parameter should not be needed at all and the logic that is executed would be determined based on
+                  whether or not the "custom_cache_save_steps" parameter is empty, but that is not currently possible in CircleCI.
+                type: boolean
+              go_command:
+                default: go
+                description: |
+                  The command to execute to run "go".
+                type: string
+              go_sum_file:
+                default: go.sum
+                description: |
+                  The path to the "go.sum" file. The checksum for this file is used as part of the cache key.
+                type: string
+            steps:
+              - run:
+                  command: |
+                    #!/bin/bash
+                    
+                    if [ -n "${PARAM_DEBUG_ORB}" ]; then
+                      set -x
+                    fi
+                    
+                    GO_COMMAND=${PARAM_GO_COMMAND}
+                    GO_ENV_ARG=${PARAM_GO_ENV_ARG}
+                    
+                    ACTUAL_CACHE_LOCATION=$("${GO_COMMAND}" env "${GO_ENV_ARG}")
+                    CANONICAL_ACTUAL_CACHE_LOCATION=${ACTUAL_CACHE_LOCATION}
+                    if [ -e "${CANONICAL_ACTUAL_CACHE_LOCATION}" ]; then
+                      CANONICAL_ACTUAL_CACHE_LOCATION=$(readlink -f "${CANONICAL_ACTUAL_CACHE_LOCATION}")
+                    fi
+                    
+                    # replace tilde with home directory
+                    JOB_CACHE_LOCATION=${PARAM_CACHE_LOCATION}
+                    JOB_CACHE_LOCATION="${JOB_CACHE_LOCATION/#\~/$HOME}"
+                    CANONICAL_JOB_CACHE_LOCATION=${JOB_CACHE_LOCATION}
+                    if [ -e "${CANONICAL_JOB_CACHE_LOCATION}" ]; then
+                      CANONICAL_JOB_CACHE_LOCATION=$(readlink -f "${CANONICAL_JOB_CACHE_LOCATION}")
+                    fi
+                    
+                    if [ "${CANONICAL_JOB_CACHE_LOCATION}" == "${CANONICAL_ACTUAL_CACHE_LOCATION}" ]; then
+                      echo "Cache location for job matched actual cache location: both are \"${CANONICAL_ACTUAL_CACHE_LOCATION}\""
+                    else
+                      echo "Cache location for job did not match actual cache location: \"${CANONICAL_JOB_CACHE_LOCATION}\" != \"${CANONICAL_ACTUAL_CACHE_LOCATION}\""
+                      exit 1
+                    fi
+                  environment:
+                    GOTOOLCHAIN: local
+                    PARAM_CACHE_LOCATION: << parameters.cache_location >>
+                    PARAM_GO_COMMAND: << parameters.go_command >>
+                    PARAM_GO_ENV_ARG: GOMODCACHE
+                  name: 'go-dist/go_mod_cache_save: Verify that Go module cache directory location is correct'
+              - unless:
+                  condition: << parameters.custom_cache_save_steps_enabled >>
+                  steps:
+                    - save_cache:
+                        key: go-mod-<< parameters.cache_key_prefix >>-<< parameters.cache_location >>-{{ checksum "<< parameters.go_sum_file >>" }}
+                        name: 'go-dist/go_mod_cache_save: Save go module cache'
+                        paths:
+                          - << parameters.cache_location >>
+              - when:
+                  condition: << parameters.custom_cache_save_steps_enabled >>
+                  steps:
+                    - steps: << parameters.custom_cache_save_steps >>
+          golangci_lint_cache_restore:
+            description: |
+              Saves the go build cache.
+            parameters:
+              cache_invalidation_interval:
+                default: 7
+                description: |
+                  The interval at which the cache is invalidated. This is used to ensure that the cache is periodically refreshed
+                  even if the other components of the key do not change. The value is an integer that represents a duration in days.
+                  The default value is 7. This parameter, default, and logic is based on the official golangci-lint GitHub action
+                  (see https://github.com/golangci/golangci-lint-action?tab=readme-ov-file#cache-invalidation-interval).
+                type: integer
+              cache_key_file_path:
+                default: ~/golangci-lint-cache-key.txt
+                description: |
+                  The path at which the cache key file is written. This file is used in conjunction with the cache_invalidation_interval
+                  parameter to periodically invalidate the cache.
+                type: string
+              cache_key_prefix:
+                default: v1
+                description: |
+                  The prefix for the cache key. Is generally considered immutable, but the value can be changed to intentionally
+                  invalidate the cache.
+                type: string
+              cache_location:
+                default: ~/.cache/golangci-lint
+                description: |
+                  The location of the go build cache directory.
+                type: string
+              custom_cache_restore_steps:
+                default: [ ]
+                description: |
+                  The steps that are run to perform the "cache restore" operation if the "custom_cache_restore_steps_enabled"
+                  parameter is true. Note that the provided steps are run directly: the machinations of orbs makes it such that it
+                  is not possible to pass the parameters provided to this command to the value of this step. Thus, if this parameter
+                  is specified, in most scenarios the caller should also explicitly specify other parameters such as
+                  "cache_key_prefix" and the step(s) provided to this parameter should make use of those same values.
+                type: steps
+              custom_cache_restore_steps_enabled:
+                default: false
+                description: |
+                  If true, indicates that the steps in "custom_cache_restore_steps" should be used for restoring cache.
+                  If false, runs the following step to perform the "cache restore" operation:
+                  
+                  - restore_cache:
+                      name: "go-dist/golangci_lint_cache_restore: Restore golangci-lint cache"
+                      keys:
+                        - golangci-lint-<< parameters.cache_key_prefix >>-<< parameters.cache_location >>-{{ checksum "<< parameters.go_sum_file >>" }}-{{ checksum "<< parameters.cache_key_file_path >>" }}
+                  
+                  Ideally, this parameter should not be needed at all and the logic that is executed would be determined based on
+                  whether or not the "custom_cache_restore_steps" parameter is empty, but that is not currently possible in CircleCI.
+                type: boolean
+              go_sum_file:
+                default: go.sum
+                description: |
+                  The path to the "go.sum" file. The checksum for this file is used as part of the cache key.
+                type: string
+            steps:
+              - run:
+                  command: |
+                    #!/bin/bash
+                    
+                    # get_interval_key prints a cache key based on the current time and the invalidation interval in days.
+                    # If the interval is less than or equal to zero, it returns a key that will always be unique (milliseconds since epoch).
+                    function get_interval_key() {
+                      local invalidation_interval_days="$1"
+                    
+                      if [[ "$invalidation_interval_days" -le 0 ]]; then
+                        # Return milliseconds since epoch
+                        date +%s%N
+                        return
+                      fi
+                    
+                      local now_seconds
+                      now_seconds=$(date +%s)
+                      local interval_seconds=$((invalidation_interval_days * 86400))
+                      local interval_number=$((now_seconds / interval_seconds))
+                      echo "$interval_number"
+                    }
+                    
+                    if [ -n "${PARAM_DEBUG_ORB}" ]; then
+                      set -x
+                    fi
+                    
+                    INVALIDATION_INTERVAL_DAYS_VAL=${PARAM_INVALIDATION_INTERVAL_DAYS}
+                    CACHE_KEY_FILE=${PARAM_CACHE_KEY_FILE}
+                    
+                    INTERVAL_KEY=$(get_interval_key "${INVALIDATION_INTERVAL_DAYS_VAL}")
+                    
+                    echo "${INTERVAL_KEY}" > "${CACHE_KEY_FILE}"
+                  environment:
+                    PARAM_CACHE_KEY_FILE: << parameters.cache_key_file_path >>
+                    PARAM_INVALIDATION_INTERVAL_DAYS: << parameters.cache_invalidation_interval >>
+                  name: 'go-dist/golangci_lint_cache_restore: write cache invalidation interval key at << parameters.cache_key_file_path >>'
+              - unless:
+                  condition: << parameters.custom_cache_restore_steps_enabled >>
+                  steps:
+                    - restore_cache:
+                        keys:
+                          - golangci-lint-<< parameters.cache_key_prefix >>-<< parameters.cache_location >>-{{ checksum "<< parameters.go_sum_file >>" }}-{{ checksum "<< parameters.cache_key_file_path >>" }}
+                        name: 'go-dist/golangci_lint_cache_restore: Restore golangci-lint cache'
+              - when:
+                  condition: << parameters.custom_cache_restore_steps_enabled >>
+                  steps:
+                    - steps: << parameters.custom_cache_restore_steps >>
+          golangci_lint_cache_save:
+            description: |
+              Saves the golangci-lint cache.
+            parameters:
+              cache_invalidation_interval:
+                default: 7
+                description: |
+                  The interval at which the cache is invalidated. This is used to ensure that the cache is periodically refreshed
+                  even if the other components of the key do not change. The value is an integer that represents a duration in days.
+                  The default value is 7. This parameter, default, and logic is based on the official golangci-lint GitHub action
+                  (see https://github.com/golangci/golangci-lint-action?tab=readme-ov-file#cache-invalidation-interval).
+                type: integer
+              cache_key_file_path:
+                default: ~/golangci-lint-cache-key.txt
+                description: |
+                  The path at which the cache key file is written. This file is used in conjunction with the cache_invalidation_interval
+                  parameter to periodically invalidate the cache.
+                type: string
+              cache_key_prefix:
+                default: v1
+                description: |
+                  The prefix for the cache key. Is generally considered immutable, but the value can be changed to intentionally
+                  invalidate the cache.
+                type: string
+              cache_location:
+                default: ~/.cache/golangci-lint
+                description: |
+                  The location of the go build cache directory.
+                type: string
+              custom_cache_save_steps:
+                default: [ ]
+                description: |
+                  The steps that are run to perform the "cache save" operation if the "custom_cache_save_steps_enabled" parameter is
+                  true. Note that the provided steps are run directly: the machinations of orbs makes it such that it is not
+                  possible to pass the parameters provided to this command to the value of this step. Thus, if this parameter is
+                  specified, in most scenarios the caller should also explicitly specify other parameters such as "cache_key_prefix"
+                  and the step(s) provided to this parameter should make use of those same values.
+                type: steps
+              custom_cache_save_steps_enabled:
+                default: false
+                description: |
+                  If true, indicates that the steps in "custom_cache_save_steps" should be used for saving cache.
+                  If false, runs the following step to perform the "cache save" operation:
+                  
+                  - save_cache:
+                      name: "go-dist/golangci_lint_cache_save: Save golangci-lint cache"
+                      key: golangci-lint-<< parameters.cache_key_prefix >>-<< parameters.cache_location >>-{{ checksum "<< parameters.go_sum_file >>" }}-{{ checksum "<< parameters.cache_key_file_path >>" }}
+                      paths:
+                        - << parameters.cache_location >>
+                  
+                  Ideally, this parameter should not be needed at all and the logic that is executed would be determined based on
+                  whether or not the "custom_cache_save_steps" parameter is empty, but that is not currently possible in CircleCI.
+                type: boolean
+              go_sum_file:
+                default: go.sum
+                description: |
+                  The path to the "go.sum" file. The checksum for this file is used as part of the cache key.
+                type: string
+            steps:
+              - run:
+                  command: |
+                    #!/bin/bash
+                    
+                    # get_interval_key prints a cache key based on the current time and the invalidation interval in days.
+                    # If the interval is less than or equal to zero, it returns a key that will always be unique (milliseconds since epoch).
+                    function get_interval_key() {
+                      local invalidation_interval_days="$1"
+                    
+                      if [[ "$invalidation_interval_days" -le 0 ]]; then
+                        # Return milliseconds since epoch
+                        date +%s%N
+                        return
+                      fi
+                    
+                      local now_seconds
+                      now_seconds=$(date +%s)
+                      local interval_seconds=$((invalidation_interval_days * 86400))
+                      local interval_number=$((now_seconds / interval_seconds))
+                      echo "$interval_number"
+                    }
+                    
+                    if [ -n "${PARAM_DEBUG_ORB}" ]; then
+                      set -x
+                    fi
+                    
+                    INVALIDATION_INTERVAL_DAYS_VAL=${PARAM_INVALIDATION_INTERVAL_DAYS}
+                    CACHE_KEY_FILE=${PARAM_CACHE_KEY_FILE}
+                    
+                    INTERVAL_KEY=$(get_interval_key "${INVALIDATION_INTERVAL_DAYS_VAL}")
+                    
+                    echo "${INTERVAL_KEY}" > "${CACHE_KEY_FILE}"
+                  environment:
+                    PARAM_CACHE_KEY_FILE: << parameters.cache_key_file_path >>
+                    PARAM_INVALIDATION_INTERVAL_DAYS: << parameters.cache_invalidation_interval >>
+                  name: 'go-dist/golangci_lint_cache_save: write cache invalidation interval key at << parameters.cache_key_file_path >>'
+              - unless:
+                  condition: << parameters.custom_cache_save_steps_enabled >>
+                  steps:
+                    - save_cache:
+                        key: golangci-lint-<< parameters.cache_key_prefix >>-<< parameters.cache_location >>-{{ checksum "<< parameters.go_sum_file >>" }}-{{ checksum "<< parameters.cache_key_file_path >>" }}
+                        name: 'go-dist/golangci_lint_cache_save: Save golangci-lint cache'
+                        paths:
+                          - << parameters.cache_location >>
+              - when:
+                  condition: << parameters.custom_cache_save_steps_enabled >>
+                  steps:
+                    - steps: << parameters.custom_cache_save_steps >>
+          install_go_std:
+            description: |
+              Ensures that the go standard library module is built and installed.
+            parameters:
+              go_command:
+                default: go
+                description: |
+                  The command to execute to run "go".
+                type: string
+              go_os_archs_to_build:
+                default: ""
+                description: |
+                  The OS/Architecture combinations for which the standard library should be built and installed. Specified as
+                  "${GOOS}-${GOARCH}" -- for example, "linux-amd64". Can be comma-separated to specify multiple OS/Architecture
+                  combinations -- for example, "linux-amd64,darwin-arm64". If blank, uses the OS/Architecture of the environment.
+                type: string
+            steps:
+              - run:
+                  command: |
+                    #!/bin/bash
+                    
+                    # The overall goal of "install_std" is to ensure that the standard library for a Go distribution has been built for a
+                    # particular set of OS and Architectures.
+                    #
+                    # The following are variables that control various aspects of behavior:
+                    #  * PARAM_GO_COMMAND:
+                    #       The "go" command to execute to run go operations.
+                    #  * PARAM_GO_OS_ARCHS_TO_BUILD:
+                    #       The OS/Architecture combinations for which the standard library should be built and cached. Specified as
+                    #       "${GOOS}-${GOARCH}" -- for example, "linux-amd64". Can be comma-separated to specify multiple OS/Architecture
+                    #       combinations -- for example, "linux-amd64,darwin-arm64". If blank, uses the OS/Architecture of the environment.
+                    
+                    # Runs "go install std" using the command "GOTOOLCHAIN=local GO111MODULE=off ${1} install std" using the OS/Ach
+                    # combinations provided as "${2}" if the standard library is reported as stale using the list command. If "${2}" is
+                    # empty, runs the command for the current OS/Arch combination.
+                    function install_std() {
+                      GO_COMMAND="${1}"
+                      if [ -z "${GO_COMMAND}" ]; then
+                        echo "GO_COMMAND parameter cannot be empty"
+                        exit 1
+                      fi
+                    
+                      OS_ARCHS=${2}
+                      # if input is empty, set to value that will parse as empty OS/Arch (which will use default values)
+                      if [ -z "${OS_ARCHS}" ]; then
+                        OS_ARCHS="-"
+                      fi
+                    
+                      IFS=',' read -ra OS_ARCHS_ARRAY \<<< "${OS_ARCHS}"
+                      for CURR_OS_ARCH in "${OS_ARCHS_ARRAY[@]}"; do
+                        IFS='-' read -ra SINGLE_OS_ARCH_ARRAY \<<< "${CURR_OS_ARCH}"
+                    
+                        GOOS="${SINGLE_OS_ARCH_ARRAY[0]}"
+                        GOARCH="${SINGLE_OS_ARCH_ARRAY[1]}"
+                    
+                        # run the "list" command with GOTOOLCHAIN=local and GO111MODULE=off so that it does not consider go.mod file
+                        IS_STD_STALE=$(GOTOOLCHAIN=local GO111MODULE=off GOOS="${GOOS}" GOARCH="${GOARCH}" "${GO_COMMAND}" list -f '{{.Stale}}' fmt)
+                        EXIT_CODE=$?
+                        if [ "${EXIT_CODE}" -ne 0 ]; then
+                          echo "Failed to run \"GOTOOLCHAIN=local GO111MODULE=off GOOS=\"${GOOS}\" GOARCH=\"${GOARCH}\" \"${GO_COMMAND}\" list -f '{{.Stale}}' fmt"
+                          exit 1
+                        fi
+                    
+                        if [ "${IS_STD_STALE}" == "false" ]; then
+                          echo "Standard library is up-to-date for GOOS=\"${GOOS}\", GOARCH=\"${GOARCH}\""
+                        else
+                          echo "Installing standard library for GOOS=\"${GOOS}\", GOARCH=\"${GOARCH}\""
+                          # run the "install" command with GOTOOLCHAIN=local and GO111MODULE=off so that it does not consider go.mod file
+                          (time GOTOOLCHAIN=local GO111MODULE=off GOOS="${GOOS}" GOARCH="${GOARCH}" "${GO_COMMAND}" install std)
+                          EXIT_CODE=$?
+                          if [ "${EXIT_CODE}" -ne 0 ]; then
+                            echo "Failed to run \"GOTOOLCHAIN=local GO111MODULE=off GOOS=\"${GOOS}\" GOARCH=\"${GOARCH}\" \"${GO_COMMAND}\" install std\""
+                            exit 1
+                          fi
+                        fi
+                      done
+                    }
+                    
+                    function run_install_std() {
+                      GO_COMMAND="${PARAM_GO_COMMAND}"
+                      GO_OS_ARCHS_TO_BUILD=${PARAM_GO_OS_ARCHS_TO_BUILD}
+                    
+                      install_std "${GO_COMMAND}" "${GO_OS_ARCHS_TO_BUILD}"
+                    }
+                    
+                    # run the script if PARAM_SKIP_RUN is not specified
+                    if [ -z "${PARAM_SKIP_RUN}" ]; then
+                      if [ -n "${PARAM_DEBUG_ORB}" ]; then
+                        set -x
+                      fi
+                    
+                      if [ -n "${PARAM_SCRIPT_OUTPUT_FILE}" ]; then
+                        run_install_std 2>&1 | tee "${PARAM_SCRIPT_OUTPUT_FILE}"
+                      else
+                        run_install_std
+                      fi
+                    fi
+                  environment:
+                    GOTOOLCHAIN: local
+                    PARAM_GO_COMMAND: << parameters.go_command >>
+                    PARAM_GO_OS_ARCHS_TO_BUILD: << parameters.go_os_archs_to_build >>
+                  name: 'go-dist/install_go_std: Install go standard libraries'
+          setup_go_dist:
+            description: |
+              Ensures that a go distribution exists.
+              If a version parameter is specified, ensures that a go distribution
+              with the provided version exists.
+            parameters:
+              cache_key_prefix:
+                default: v1
+                description: |
+                  The prefix for the cache key. Is generally considered immutable, but the value can be changed to intentionally
+                  invalidate the cache.
+                type: string
+              custom_cache_restore_steps:
+                default: [ ]
+                description: |
+                  The steps that are run to perform the "cache restore" operation if the "custom_cache_restore_steps_enabled"
+                  parameter is true. Note that the provided steps are run directly: the machinations of orbs makes it such that it
+                  is not possible to pass the parameters provided to this command to the value of this step. Thus, if this parameter
+                  is specified, in most scenarios the caller should also explicitly specify the "cache_key_prefix", "go_os_arch",
+                  and "go_dists_cache_dir" parameters, and the step(s) provided to this parameter should make use of those same
+                  values.
+                type: steps
+              custom_cache_restore_steps_enabled:
+                default: false
+                description: |
+                  If true, indicates that the steps in "custom_cache_restore_steps" should be used for restoring cache.
+                  If false, runs the following step to perform the "cache restore" operation:
+                  
+                  - restore_cache:
+                      name: "go-dist/setup_go_dist: Restore go distribution cache"
+                      keys:
+                        - go-dists-<< parameters.cache_key_prefix >>-<< parameters.go_version >>-<< parameters.go_os_arch >>
+                  
+                  Ideally, this parameter should not be needed at all and the logic that is executed would be determined based on
+                  whether or not the "custom_cache_restore_steps" parameter is empty, but that is not currently possible in CircleCI.
+                type: boolean
+              custom_cache_save_steps:
+                default: [ ]
+                description: |
+                  The steps that are run to perform the "cache save" operation if the "custom_cache_save_steps_enabled" parameter is
+                  true. Note that the provided steps are run directly: the machinations of orbs makes it such that it is not
+                  possible to pass the parameters provided to this command to the value of this step. Thus, if this parameter is
+                  specified, in most scenarios the caller should also explicitly specify the "cache_key_prefix", "go_os_arch", and
+                  "go_dists_cache_dir" parameters, and the step(s) provided to this parameter should make use of those same values.
+                type: steps
+              custom_cache_save_steps_enabled:
+                default: false
+                description: |
+                  If true, indicates that the steps in "custom_cache_save_steps" should be used for saving cache.
+                  If false, runs the following step to perform the "cache save" operation:
+                  
+                  - save_cache:
+                      name: "go-dist/setup_go_dist: Save go distribution cache"
+                      key: go-dists-<< parameters.cache_key_prefix >>-<< parameters.go_version >>-<< parameters.go_os_arch >>
+                      paths:
+                        - << parameters.go_dists_cache_dir >>
+                  
+                  Ideally, this parameter should not be needed at all and the logic that is executed would be determined based on
+                  whether or not the "custom_cache_save_steps" parameter is empty, but that is not currently possible in CircleCI.
+                type: boolean
+              go_dist_download_url_prefix:
+                default: https://golang.org/dl/
+                description: |
+                  The URL prefix for downloading a go distribution. Used if the script needs to download a Go distribution. The URL
+                  that is used for downloads is ${go-dist-download-url-prefix}${go-version}.${go-os-arch}.tar.gz. The default value
+                  uses the official public Golang site, but this value can be changed to use alternate download URLs such as
+                  internal mirrors.
+                type: string
+              go_dists_cache_dir:
+                default: /go/go-dists-cache
+                description: |
+                  The directory that acts as a cache for go distributions. If non-empty, if the command needs a particular Go
+                  distribution and it is not in the ${go-dists-dir} directory, it is checked for in this directory. If it exists, it
+                  is copied to the distributions directory. If the script downloads the distribution, it places it in this directory
+                  as well as the ${go-dists-dir} directory. The names of the distribution directories in this directory are the go
+                  version for the distribution. If this value is non-empty, it is saved and restored as part of CircleCI caching if
+                  the "go_version" parameter is non-empty.
+                type: string
+              go_dists_dir:
+                default: /go/go-dists
+                description: |
+                  The directory in which go distributions are stored. The command ensures that the "go" directory in this directory
+                  is the Go distribution directory for the desired version (or a symlink to that directory). This directory is also
+                  used to store full Go distributions, where the name of the Go distribution directory is the Go version (for
+                  example, "go1.23.1").
+                type: string
+              go_os_arch:
+                default: linux-amd64
+                description: |
+                  The OS/Architecture for the distribution.
+                type: string
+              go_version:
+                default: ""
+                description: |
+                  If non-empty, determines the value of the go distribution that is used as the toolchain. If empty, assumes that
+                  the "go" is already available as an executable in PATH. This should be the full Go version (for example,
+                  "go1.23.1", "go1.23rc1", etc.)
+                type: string
+              skip_update_path:
+                default: false
+                description: |
+                  If true, skips step that updates the entry in $PATH to point to the updated Go distribution.
+                type: boolean
+            steps:
+              - when:
+                  condition:
+                    and:
+                      - << parameters.go_version >>
+                      - << parameters.go_dists_cache_dir >>
+                  steps:
+                    - unless:
+                        condition: << parameters.custom_cache_restore_steps_enabled >>
+                        steps:
+                          - restore_cache:
+                              keys:
+                                - go-dists-<< parameters.cache_key_prefix >>-<< parameters.go_version >>-<< parameters.go_os_arch >>
+                              name: 'go-dist/setup_go_dist: Restore go distribution cache'
+                    - when:
+                        condition: << parameters.custom_cache_restore_steps_enabled >>
+                        steps:
+                          - steps: << parameters.custom_cache_restore_steps >>
+              - run:
+                  command: |
+                    #!/bin/bash
+                    
+                    # The overall goal of "setup-go-dist" is to ensure that the desired Go distribution exists at the path
+                    # ${PARAM_GO_DISTS_DIR}/go (this path may be a symlink). From a practical perspective, this means that adding
+                    # ${PARAM_GO_DISTS_DIR}/go/bin to $PATH will ensure that the "go" command invokes the Go executable with the desired
+                    # version.
+                    #
+                    # The following are variables that control various aspects of behavior:
+                    #  * PARAM_GO_VERSION:
+                    #       The version of the Go distribution that the script should ensure is used. If this value is blank, it means that
+                    #       the version of the Go distribution invoked by "go" should be used (and the script errors if the "go" command
+                    #       does not exist or is not a valid Golang distribution).
+                    #  * PARAM_GO_OS_ARCH:
+                    #       The OS/Arch that should be used for distributions set up by this script. Should match the OS/Architecture of the
+                    #       container image or machine running the executables.
+                    #  * PARAM_GO_DIST_DOWNLOAD_URL_PREFIX:
+                    #       The URL prefix for downloading a Go distribution. Used if the script needs to download a Go distribution.
+                    #       The URL that is used for downloads is ${PARAM_GO_DIST_DOWNLOAD_URL_PREFIX}${GO_VERSION}.${GO_OS_ARCH}.tar.gz.
+                    #       The value "https://golang.org/dl/" can be used for downloading distributions from the official public Golang
+                    #       site, but this value can be changed to use alternate download URLs such as internal mirrors.
+                    #  * PARAM_GO_DISTS_DIR:
+                    #       The directory that contains Go distributions. The script ensures that there is a "go" symlink in this directory
+                    #       that is a symlink to the Go distribution directory for the version of Go being used. Go distribution directories
+                    #       have the name ${GO_VERSION}. If a required distribution does not exist in this directory, the script downloads
+                    #       the distribution and places it here. Local machines or Docker images may prepopulate this directory with
+                    #       distributions.
+                    #  * PARAM_GO_DISTS_CACHE_DIR:
+                    #       specifies the directory that acts as a cache for Go distributions. If non-empty, if the script needs a
+                    #       particular Go distribution and it is not in the ${PARAM_GO_DISTS_DIR} directory, it is checked for in this
+                    #       directory. If it exists, it is copied to the distributions directory. If the script downloads the distribution,
+                    #       it places it in this directory as well as the ${PARAM_GO_DISTS_DIR} directory. Distribution directories in this
+                    #       directory have the name ${GO_VERSION}. This directory exists as a directory that can be specified as a cache
+                    #       directory for CI systems (such as CircleCI). Unlike the ${PARAM_GO_DISTS_DIR} directory, the contents of this
+                    #       directory should only be modified by this script.
+                    #
+                    # There are 2 modes of operation: "default" mode, which assumes/requires that a "go" executable already exists and uses
+                    # the version of that executable, and a "version" mode, which takes a version as an argument and ensures that the Go
+                    # distribution with that version is used.
+                    #
+                    # In "default" mode, the script verifies that the "go" command can be invoked and that its parent directory is "bin"
+                    # and, if so, ensures that ${PARAM_GO_DISTS_DIR}/go is a symlink to the grandparent directory of the "go" command.
+                    #
+                    # In "version" mode, the script does the following:
+                    #  * If a "go" executable exists and is the specified version, performs the same operations as in "default" mode
+                    #  * If a "go" executable does not exist or it exists and is not the correct version:
+                    #    * Checks if the go distribution exists in the ${PARAM_GO_DISTS_DIR} directory: if it does, ensures that
+                    #      ${PARAM_GO_DISTS_DIR}/go is a symlink to this directory
+                    #    * If not, if ${PARAM_GO_DISTS_CACHE_DIR} is non-empty, checks if the distribution exists in this directory: if
+                    #      it does, it is copied into the ${PARAM_GO_DISTS_DIR} directory and the "go" symlink is set up.
+                    #    * If not, downloads the desired Go distribution from ${PARAM_GO_DIST_DOWNLOAD_URL_PREFIX}${GO_VERSION}.${GO_OS_ARCH}.tar.gz
+                    #      and expands the directory into the ${PARAM_GO_DISTS_DIR} directory (and into the ${PARAM_GO_DISTS_CACHE_DIR} if
+                    #      it is non-empty) and then ensures that ${PARAM_GO_DISTS_DIR}/go is a symlink to this directory
+                    #
+                    # After this script executes, it is guaranteed that "${PARAM_GO_DISTS_DIR}/go/bin/go" runs the Go executable with the
+                    # desired version (adding "${PARAM_GO_DISTS_DIR}/go/bin" to the path should select this binary).
+                    
+                    # Prints the go version parsed from the output of running "go version" -- for example, "go1.23.1". If an error is
+                    # encountered, prints the full output and exits with a status of 1. The first parameter is used as the location of the
+                    # go executable to invoke, and GOTOOLCHAIN=local is set before invoking the command to ensure that the version that is
+                    # printed is the version of the executable itself.
+                    function must_get_go_version() {
+                      GO_EXECUTABLE=${1}
+                      if [ -z "${GO_EXECUTABLE}" ]; then
+                        echo "GO_EXECUTABLE parameter cannot be empty"
+                        exit 1
+                      fi
+                    
+                      GO_VERSION_FULL_OUTPUT=$(GOTOOLCHAIN=local "${GO_EXECUTABLE}" version)
+                      EXIT_CODE=$?
+                      if [ "${EXIT_CODE}" -ne 0 ]; then
+                        exit "${EXIT_CODE}"
+                      fi
+                    
+                      VERSION_REGEXP='go version ([^ ]+)'
+                      if [[ ${GO_VERSION_FULL_OUTPUT} =~ ${VERSION_REGEXP} ]]; then
+                        CURR_GO_VERSION="${BASH_REMATCH[1]}"
+                        echo "${CURR_GO_VERSION}"
+                      else
+                        echo "Output of \"go version\" was \"${GO_VERSION_FULL_OUTPUT}\", which did not match expected regular expression \"${VERSION_REGEXP}\""
+                        exit 1
+                      fi
+                    }
+                    
+                    # Prints the go version parsed from the output of running "{$1} version", where "${1}" is a path that resolves to a Go
+                    # executable (for example, "go" or "${PARAM_GO_DISTS_DIR}/go/bin/go"). The printed output is the parsed Go version: for
+                    # example, "go1.23.1" or "go1.22rc2". If an error is encountered in invoking the executable or parsing the output, the
+                    # function does not print anything and exits with a status code of 0 -- if the desired behavior is to error in such
+                    # cases, the "must_get_go_version" function should be used instead. The first parameter is used as the location of the
+                    # go executable to invoke, and GOTOOLCHAIN=local is set before invoking the command to ensure that the version that is
+                    # printed is the version of the executable itself.
+                    function get_go_version() {
+                      GO_EXECUTABLE=${1}
+                      if [ -z "${GO_EXECUTABLE}" ]; then
+                        echo "GO_EXECUTABLE parameter cannot be empty"
+                        exit 1
+                      fi
+                    
+                      if [ -z "$(command -v "${GO_EXECUTABLE}")" ]; then
+                        # if executable does not exist, short-circuit
+                        exit 0
+                      fi
+                    
+                      GO_VERSION_FULL_OUTPUT=$(GOTOOLCHAIN=local "${GO_EXECUTABLE}" version)
+                      VERSION_REGEXP='go version ([^ ]+)'
+                      if [[ ${GO_VERSION_FULL_OUTPUT} =~ ${VERSION_REGEXP} ]]; then
+                        CURR_GO_VERSION="${BASH_REMATCH[1]}"
+                        echo "${CURR_GO_VERSION}"
+                      fi
+                    }
+                    
+                    # Prints the Go version to use. If the GO_VERSION argument (the second argument) is non-empty, returns that value;
+                    # otherwise, returns the version of the go executable provided as the first parameter. Exits if the GO_VERSION argument
+                    # is not specified and Go executable does not exist. If the GO_VERSION argument is non-empty and returned, this function
+                    # does not perform any verification that the distribution exists.
+                    function determine_go_version_to_use() {
+                      GO_EXECUTABLE=${1}
+                      if [ -z "${GO_EXECUTABLE}" ]; then
+                        echo "GO_EXECUTABLE parameter cannot be empty"
+                        exit 1
+                      fi
+                    
+                      GO_VERSION=${2}
+                      if [ -z "${GO_VERSION}" ]; then
+                        # GO_VERSION param is empty: use version from Go binary
+                        GO_VERSION=$(must_get_go_version "${GO_EXECUTABLE}")
+                        EXIT_STATUS=$?
+                        if [ "${EXIT_STATUS}" -ne 0 ]; then
+                          exit "${EXIT_STATUS}"
+                        fi
+                      fi
+                      echo "${GO_VERSION}"
+                    }
+                    
+                    # Downloads the specified Go distribution. Takes the distribution download URL prefix, version, and OS/Arch of the
+                    # distribution to download as arguments. Ensures that the downloaded distribution is expanded to ${GO_DISTS_DIR}/${GO_VERSION}.
+                    # If GO_DISTS_CACHE_DIR is non-empty, also ensures that the expanded distribution is copied to ${GO_DISTS_CACHE_DIR}/${GO_VERSION}.
+                    #
+                    # Arguments:
+                    #   * GO_VERSION
+                    #   * GO_OS_ARCH
+                    #   * GO_DIST_DOWNLOAD_URL_PREFIX
+                    #   * GO_DISTS_DIR
+                    #   * GO_DISTS_CACHE_DIR (optional)
+                    function download_go_dist() {
+                      GO_VERSION="${1}"
+                      if [ -z "${GO_VERSION}" ]; then
+                        echo "GO_VERSION parameter cannot be empty"
+                        exit 1
+                      fi
+                    
+                      GO_OS_ARCH="${2}"
+                      if [ -z "${GO_OS_ARCH}" ]; then
+                        echo "GO_OS_ARCH parameter cannot be empty"
+                        exit 1
+                      fi
+                    
+                      GO_DIST_DOWNLOAD_URL_PREFIX="${3}"
+                      if [ -z "${GO_DIST_DOWNLOAD_URL_PREFIX}" ]; then
+                        echo "GO_DIST_DOWNLOAD_URL_PREFIX parameter cannot be empty"
+                        exit 1
+                      fi
+                    
+                      GO_DISTS_DIR="${4}"
+                      if [ -z "${GO_DISTS_DIR}" ]; then
+                        echo "GO_DISTS_DIR parameter cannot be empty"
+                        exit 1
+                      fi
+                      mkdir -p "${GO_DISTS_DIR}"
+                    
+                      GO_DISTS_CACHE_DIR="${5}"
+                      if [ -n "${GO_DISTS_CACHE_DIR}" ]; then
+                        # ensure that cache directory exists if it is non-empty
+                        mkdir -p "${GO_DISTS_CACHE_DIR}"
+                      fi
+                    
+                      GO_DISTS_DOWNLOAD_DIR="${GO_DISTS_DIR}/downloads"
+                      mkdir -p "${GO_DISTS_DOWNLOAD_DIR}"
+                    
+                      echo "Downloading golang distribution from ${GO_DIST_DOWNLOAD_URL_PREFIX}${GO_VERSION}.${GO_OS_ARCH}.tar.gz..."
+                      curl -L -o "${GO_DISTS_DOWNLOAD_DIR}/${GO_VERSION}.${GO_OS_ARCH}.tar.gz" "${GO_DIST_DOWNLOAD_URL_PREFIX}${GO_VERSION}.${GO_OS_ARCH}.tar.gz"
+                      EXIT_CODE=$?
+                      if [ "${EXIT_CODE}" -ne 0 ]; then
+                        echo "FAIL"
+                        echo "Failed to download Go distribution"
+                        exit "${EXIT_CODE}"
+                      fi
+                      echo "SUCCESS"
+                    
+                      printf '%s' "Expanding archive ... "
+                      tar xf "${GO_DISTS_DOWNLOAD_DIR}/${GO_VERSION}.${GO_OS_ARCH}.tar.gz" -C "${GO_DISTS_DOWNLOAD_DIR}"
+                      EXIT_CODE=$?
+                      if [ "${EXIT_CODE}" -ne 0 ]; then
+                        echo "FAIL"
+                    
+                        echo "failed to expand archive"
+                        exit "${EXIT_CODE}"
+                      fi
+                      echo "SUCCESS"
+                    
+                      printf '%s' "Removing archive ... "
+                      rm "${GO_DISTS_DOWNLOAD_DIR}/${GO_VERSION}.${GO_OS_ARCH}.tar.gz"
+                      EXIT_CODE=$?
+                      if [ "${EXIT_CODE}" -ne 0 ]; then
+                        echo "FAIL"
+                        echo "failed to remove downloaded archive"
+                        exit "${EXIT_CODE}"
+                      fi
+                      echo "SUCCESS"
+                    
+                      printf '%s' "Moving expanded Go distribution to ${GO_DISTS_DIR}/${GO_VERSION} ... "
+                      mv "${GO_DISTS_DOWNLOAD_DIR}/go" "${GO_DISTS_DIR}/${GO_VERSION}"
+                      EXIT_CODE=$?
+                      if [ "${EXIT_CODE}" -ne 0 ]; then
+                        echo "FAIL"
+                    
+                        echo "failed to move downloaded Go distribution"
+                        exit "${EXIT_CODE}"
+                      fi
+                      echo "SUCCESS"
+                    
+                      if [ -n "${GO_DISTS_CACHE_DIR}" ]; then
+                        printf '%s' "Copying expanded Go distribution to cache directory ${GO_DISTS_CACHE_DIR}/${GO_VERSION} ... "
+                        cp -r "${GO_DISTS_DIR}/${GO_VERSION}" "${GO_DISTS_CACHE_DIR}"
+                        EXIT_CODE=$?
+                        if [ "${EXIT_CODE}" -ne 0 ]; then
+                          echo "FAIL"
+                    
+                          echo "failed to copy expanded Go distribution to cache directory"
+                          exit "${EXIT_CODE}"
+                        fi
+                        echo "SUCCESS"
+                      fi
+                    }
+                    
+                    # Ensures that path provided as argument is a symlink to the grandparent directory of the executable resolved by the
+                    # "go" command (as determined by calling "readlink -f" on the output of "command -v go"). The resolved "go" executable
+                    # must be in a Go distribution directory (specifically, the parent directory of the "go" executable must be named "bin")
+                    # or the function will exit with a status code of 1.
+                    function setup_go_binary_symlink() {
+                      GO_DIST_SYMLINK_PATH=${1}
+                      if [ -z "${GO_DIST_SYMLINK_PATH}" ]; then
+                        echo "GO_DIST_SYMLINK_PATH argument cannot be empty"
+                        exit 1
+                      fi
+                    
+                      GO_BIN_PATH=$(command -v go)
+                      EXIT_CODE=$?
+                      if [ "${EXIT_CODE}" -ne 0 ]; then
+                        echo "go executable not on PATH"
+                        exit "${EXIT_CODE}"
+                      fi
+                    
+                      GO_BIN_PATH=$(readlink -f "${GO_BIN_PATH}")
+                      EXIT_CODE=$?
+                      if [ "${EXIT_CODE}" -ne 0 ]; then
+                        echo "error calling readlink of Go executable"
+                        exit "${EXIT_CODE}"
+                      fi
+                    
+                      GO_BIN_PARENT=$(cd "$(dirname "${GO_BIN_PATH}")" || exit 1; pwd)
+                      EXIT_CODE=$?
+                      if [ "${EXIT_CODE}" -ne 0 ]; then
+                        echo "unable to determine parent directory of go executable at ${GO_BIN_PATH}"
+                        exit "${EXIT_CODE}"
+                      fi
+                    
+                      GO_BIN_PARENT_NAME=$(basename "${GO_BIN_PARENT}")
+                      if [ "${GO_BIN_PARENT_NAME}" != "bin" ]; then
+                        echo "parent directory of go executable at ${GO_BIN_PATH} must be named \"bin\", but was: \"${GO_BIN_PARENT_NAME}\""
+                        exit 1
+                      fi
+                    
+                      GO_BIN_GRANDPARENT=$(cd "$(dirname "${GO_BIN_PARENT}")" || exit 1; pwd)
+                      EXIT_CODE=$?
+                      if [ "${EXIT_CODE}" -ne 0 ]; then
+                        echo "unable to determine grandparent directory of go executable at ${GO_BIN_PATH}"
+                        exit "${EXIT_CODE}"
+                      fi
+                    
+                      if [ -e "${GO_DIST_SYMLINK_PATH}" ]; then
+                        rm "${GO_DIST_SYMLINK_PATH}"
+                        EXIT_CODE=$?
+                        if [ "${EXIT_CODE}" -ne 0 ]; then
+                          echo "unable to remove path that exists at symlink location ${GO_DIST_SYMLINK_PATH}"
+                          exit "${EXIT_CODE}"
+                        fi
+                      fi
+                    
+                      if [ -L "${GO_DIST_SYMLINK_PATH}" ] || [ -f "${GO_DIST_SYMLINK_PATH}" ]; then
+                        rm "${GO_DIST_SYMLINK_PATH}"
+                      fi
+                      ln -s "${GO_BIN_GRANDPARENT}" "${GO_DIST_SYMLINK_PATH}"
+                      EXIT_CODE=$?
+                      if [ "${EXIT_CODE}" -ne 0 ]; then
+                        echo "failed to create symlink: command \"ln -s \"${GO_BIN_GRANDPARENT}\" \"${GO_DIST_SYMLINK_PATH}\"\" failed"
+                        exit "${EXIT_CODE}"
+                      fi
+                    }
+                    
+                    # Ensures that "${GO_DISTS_DIR}/${GO_VERSION}" exists and that there is a symlink at "${GO_DISTS_DIR}/go" that resolves
+                    # to this directory.
+                    #
+                    # Arguments:
+                    #   * GO_VERSION
+                    #   * GO_OS_ARCH
+                    #   * GO_DIST_DOWNLOAD_URL_PREFIX
+                    #   * GO_DISTS_DIR
+                    #   * GO_DISTS_CACHE_DIR (optional)
+                    function setup_go_distribution() {
+                      GO_VERSION=${1}
+                      if [ -z "${GO_VERSION}" ]; then
+                        echo "GO_VERSION parameter cannot be empty"
+                        exit 1
+                      fi
+                    
+                      GO_OS_ARCH=${2}
+                      if [ -z "${GO_OS_ARCH}" ]; then
+                        echo "GO_OS_ARCH parameter cannot be empty"
+                        exit 1
+                      fi
+                    
+                      GO_DIST_DOWNLOAD_URL_PREFIX=${3}
+                      if [ -z "${GO_DIST_DOWNLOAD_URL_PREFIX}" ]; then
+                        echo "GO_DIST_DOWNLOAD_URL_PREFIX parameter cannot be empty"
+                        exit 1
+                      fi
+                    
+                      GO_DISTS_DIR=${4}
+                      if [ -z "${GO_DISTS_DIR}" ]; then
+                        echo "GO_DISTS_DIR parameter cannot be empty"
+                        exit 1
+                      fi
+                      mkdir -p "${GO_DISTS_DIR}"
+                    
+                      GO_DISTS_CACHE_DIR=${5}
+                      if [ -n "${GO_DISTS_CACHE_DIR}" ]; then
+                        # ensure that cache directory exists if it is non-empty
+                        mkdir -p "${GO_DISTS_CACHE_DIR}"
+                      fi
+                    
+                      # ensure that "${GO_DISTS_DIR}/${GO_VERSION}" exists: check if it already exists and, if not, either get it from cache
+                      # or by downloading it
+                      if [ ! -d "${GO_DISTS_DIR}/${GO_VERSION}" ]; then
+                        # distribution does not exist
+                        if [ -n "${GO_DISTS_CACHE_DIR}" ] && [ -d "${GO_DISTS_CACHE_DIR}/${GO_VERSION}" ]; then
+                          printf '%s' "Copying distribution from cache at \"${GO_DISTS_CACHE_DIR}/${GO_VERSION}\" to destination at \"${GO_DISTS_DIR}/${GO_VERSION}\" ... "
+                          # distribution exists in cache: copy it to destination
+                          cp -r "${GO_DISTS_CACHE_DIR}/${GO_VERSION}" "${GO_DISTS_DIR}/${GO_VERSION}"
+                          EXIT_CODE=$?
+                          if [ "${EXIT_CODE}" -ne 0 ]; then
+                            echo "FAIL"
+                    
+                            echo "Failed to copy Go distribution from cache"
+                            exit "${EXIT_CODE}"
+                          fi
+                          echo "SUCCESS"
+                        else
+                          # distribution does not exist in cache: download it (this puts it in destination and in cache if it is non-empty)
+                          download_go_dist "${GO_VERSION}" "${GO_OS_ARCH}" "${GO_DIST_DOWNLOAD_URL_PREFIX}" "${GO_DISTS_DIR}" "${GO_DISTS_CACHE_DIR}"
+                          EXIT_CODE=$?
+                          if [ "${EXIT_CODE}" -ne 0 ]; then
+                            echo "Failed to download go distribution"
+                            exit "${EXIT_CODE}"
+                          fi
+                        fi
+                      fi
+                    
+                      # set up symlink (overwrite if file or symlink already exists at this location)
+                      printf '%s' "Creating symlink \"${GO_DISTS_DIR}/go\" -> \"${GO_DISTS_DIR}/${GO_VERSION}\" ... "
+                      if [ -L "${GO_DISTS_DIR}/go" ] || [ -f "${GO_DISTS_DIR}/go" ]; then
+                        rm "${GO_DISTS_DIR}/go"
+                      fi
+                      ln -s "${GO_DISTS_DIR}/${GO_VERSION}" "${GO_DISTS_DIR}/go"
+                      EXIT_CODE=$?
+                      if [ "${EXIT_CODE}" -ne 0 ]; then
+                        echo "FAIL"
+                    
+                        echo "Failed to create symlink: command \"ln -s \"${GO_DISTS_DIR}/${GO_VERSION}\" \"${GO_DISTS_DIR}/go\"\" failed"
+                        exit "${EXIT_CODE}"
+                      fi
+                      echo "SUCCESS"
+                    }
+                    
+                    # Runs the full "setup-go-dist" command logic. If this function returns with an exit code of 0, it is guaranteed that
+                    # "${PARAM_GO_DISTS_DIR}/go" resolves to the Go distribution with the desired version (either the version specified in
+                    # "${PARAM_GO_VERSION}" or the version returned by the "go" executable).
+                    function run_setup_go_dist() {
+                      GO_DISTS_DIR=${PARAM_GO_DISTS_DIR}
+                      if [ -z "${GO_DISTS_DIR}" ]; then
+                        echo "PARAM_GO_DISTS_DIR variable cannot be empty"
+                        exit 1
+                      fi
+                      mkdir -p "${GO_DISTS_DIR}"
+                    
+                      GO_DISTS_CACHE_DIR=${PARAM_GO_DISTS_CACHE_DIR}
+                    
+                      GO_OS_ARCH="${PARAM_GO_OS_ARCH}"
+                      if [ -z "${GO_OS_ARCH}" ]; then
+                        echo "PARAM_GO_OS_ARCH variable cannot be empty"
+                        exit 1
+                      fi
+                    
+                      GO_DIST_DOWNLOAD_URL_PREFIX="${PARAM_GO_DIST_DOWNLOAD_URL_PREFIX}"
+                      if [ -z "${GO_DIST_DOWNLOAD_URL_PREFIX}" ]; then
+                        echo "PARAM_GO_DIST_DOWNLOAD_URL_PREFIX variable cannot be empty"
+                        exit 1
+                      fi
+                    
+                      GO_VERSION="${PARAM_GO_VERSION}"
+                    
+                      # determine Go version that should be used
+                      GO_VERSION_TO_USE="$(determine_go_version_to_use 'go' "${GO_VERSION}")"
+                    
+                      printf '%s' "Desired go version is ${GO_VERSION_TO_USE}"
+                      if [ -n "${PARAM_GO_VERSION}" ]; then
+                        echo " (specified by variable PARAM_GO_VERSION)"
+                      else
+                        echo " (version of \"go\" executable in PATH used because variable PARAM_GO_VERSION is empty)"
+                      fi
+                    
+                      # check if Go distribution exists at "${GO_DISTS_DIR}/go" and is the desired version: if so, nothing to do
+                      GO_DISTS_GO_VERSION="$(get_go_version "${GO_DISTS_DIR}/go/bin/go")"
+                      if [ "${GO_VERSION_TO_USE}" == "${GO_DISTS_GO_VERSION}" ]; then
+                        echo "\"${GO_DISTS_DIR}/go/bin/go\" exists and is the desired version: nothing to do"
+                        exit 0
+                      fi
+                    
+                      # at this point, either "${GO_DISTS_DIR}/go" does not exist or is not the desired version
+                    
+                      # determine the current version of the "go" executable. Empty if there is no "go" executable.
+                      CURR_GO_VERSION="$(get_go_version 'go')"
+                      echo "Version returned by \"go version\" is ${CURR_GO_VERSION}"
+                    
+                      if [ "${GO_VERSION_TO_USE}" == "${CURR_GO_VERSION}" ]; then
+                        # "go" executable exists and is the desired version: set up "${GO_DISTS_DIR}/go" to symlink of distribution
+                        # for the "go" executable
+                        setup_go_binary_symlink "${GO_DISTS_DIR}/go"
+                        EXIT_CODE=$?
+                        if [ "${EXIT_CODE}" -ne 0 ]; then
+                          echo "unable to create symlink to go distribution at ${GO_DISTS_DIR}/go"
+                          exit "${EXIT_CODE}"
+                        fi
+                    
+                        echo "go executable invoked by \"go\" is the desired version: set up symlink at \"${GO_DISTS_DIR}/go\" to point to its distribution directory"
+                        exit 0
+                      fi
+                    
+                      # neither "${GO_DISTS_DIR}/go/bin/go" nor "go" are desired version: set up the Go distribution.
+                      setup_go_distribution "${GO_VERSION_TO_USE}" "${GO_OS_ARCH}" "${GO_DIST_DOWNLOAD_URL_PREFIX}" "${GO_DISTS_DIR}" "${GO_DISTS_CACHE_DIR}"
+                      EXIT_CODE=$?
+                      if [ "${EXIT_CODE}" -ne 0 ]; then
+                        echo "failed to set up the Go distribution"
+                        exit "${EXIT_CODE}"
+                      fi
+                      echo "Set up desired go distribution and set up symlink at ${GO_DISTS_DIR}/go to point to its distribution directory"
+                    
+                      # verify that Go version matches desired version
+                      GO_DISTS_GO_VERSION="$(get_go_version "${GO_DISTS_DIR}/go/bin/go")"
+                      if [ "${GO_VERSION_TO_USE}" != "${GO_DISTS_GO_VERSION}" ]; then
+                        echo "Expected Go version for binary at ${GO_DISTS_DIR}/go/bin/go to be ${GO_VERSION_TO_USE}, but was ${GO_DISTS_GO_VERSION}"
+                        exit 1
+                      fi
+                    
+                      # done
+                      exit 0
+                    }
+                    
+                    # run the script if PARAM_SKIP_RUN is not specified
+                    if [ -z "${PARAM_SKIP_RUN}" ]; then
+                      if [ -n "${PARAM_DEBUG_ORB}" ]; then
+                        set -x
+                      fi
+                    
+                      if [ -n "${PARAM_SCRIPT_OUTPUT_FILE}" ]; then
+                        run_setup_go_dist 2>&1 | tee "${PARAM_SCRIPT_OUTPUT_FILE}"
+                      else
+                        run_setup_go_dist
+                      fi
+                    fi
+                  environment:
+                    GOTOOLCHAIN: local
+                    PARAM_GO_DIST_DOWNLOAD_URL_PREFIX: << parameters.go_dist_download_url_prefix >>
+                    PARAM_GO_DISTS_CACHE_DIR: << parameters.go_dists_cache_dir >>
+                    PARAM_GO_DISTS_DIR: << parameters.go_dists_dir >>
+                    PARAM_GO_OS_ARCH: << parameters.go_os_arch >>
+                    PARAM_GO_VERSION: << parameters.go_version >>
+                  name: 'go-dist/setup_go_dist: Set up Go distribution'
+              - unless:
+                  condition: << parameters.skip_update_path >>
+                  steps:
+                    - run:
+                        command: |
+                          echo 'export PATH='"${PARAM_GO_DISTS_DIR}"'/go/bin:"${PATH}"' >> "${BASH_ENV}"
+                        environment:
+                          PARAM_GO_DISTS_DIR: << parameters.go_dists_dir >>
+                        name: 'go-dist/setup_go_dist: Update PATH to use go executable in the dists directory'
+              - run:
+                  command: |
+                    "${PARAM_GO_DISTS_DIR}/go/bin/go" env
+                  environment:
+                    GOTOOLCHAIN: local
+                    PARAM_GO_DISTS_DIR: << parameters.go_dists_dir >>
+                  name: 'go-dist/setup_go_dist: Run "go env" for Go distribution'
+              - when:
+                  condition:
+                    and:
+                      - << parameters.go_version >>
+                      - << parameters.go_dists_cache_dir >>
+                  steps:
+                    - unless:
+                        condition: << parameters.custom_cache_save_steps_enabled >>
+                        steps:
+                          - save_cache:
+                              key: go-dists-<< parameters.cache_key_prefix >>-<< parameters.go_version >>-<< parameters.go_os_arch >>
+                              name: 'go-dist/setup_go_dist: Save go distribution cache'
+                              paths:
+                                - << parameters.go_dists_cache_dir >>
+                    - when:
+                        condition: << parameters.custom_cache_save_steps_enabled >>
+                        steps:
+                          - steps: << parameters.custom_cache_save_steps >>
+          verify_go_version:
+            description: |
+              Ensures that a go distribution exists.
+              If a version parameter is specified, ensures that a go distribution
+              with the provided version exists.
+            parameters:
+              go_command:
+                default: go
+                description: |
+                  The command to execute to run "go".
+                type: string
+              match_version:
+                default: ""
+                description: |
+                  The version of go to match. Should include "go" -- for example, "go1.23.2".
+                type: string
+              not:
+                default: ""
+                description: |
+                  If non-empty, checks that the go version is NOT the one specified.
+                type: string
+            steps:
+              - unless:
+                  condition: << parameters.not >>
+                  steps:
+                    - run:
+                        command: |
+                          #!/bin/bash
+                          
+                          # Prints the go version parsed from the output of running "go version" -- for example, "go1.23.1". If an error is
+                          # encountered, prints the full output and exits with a status of 1. The first parameter is used as the location of the
+                          # go executable to invoke, and GOTOOLCHAIN=local is set before invoking the command to ensure that the version that is
+                          # printed is the version of the executable itself.
+                          function must_get_go_version() {
+                            GO_COMMAND=${1}
+                            if [ -z "${GO_COMMAND}" ]; then
+                              echo "GO_COMMAND parameter cannot be empty"
+                              exit 1
+                            fi
+                          
+                            GO_VERSION_FULL_OUTPUT=$(GOTOOLCHAIN=local "${GO_COMMAND}" version)
+                            EXIT_CODE=$?
+                            if [ "${EXIT_CODE}" -ne 0 ]; then
+                              exit "${EXIT_CODE}"
+                            fi
+                          
+                            VERSION_REGEXP='go version ([^ ]+)'
+                            if [[ ${GO_VERSION_FULL_OUTPUT} =~ ${VERSION_REGEXP} ]]; then
+                              CURR_GO_VERSION="${BASH_REMATCH[1]}"
+                              echo "${CURR_GO_VERSION}"
+                            else
+                              echo "Output of \"go version\" was \"${GO_VERSION_FULL_OUTPUT}\", which did not match expected regular expression \"${VERSION_REGEXP}\""
+                              exit 1
+                            fi
+                          }
+                          
+                          if [ -z "${PARAM_GO_COMMAND}" ]; then
+                            echo "PARAM_GO_COMMAND parameter cannot be empty"
+                            exit 1
+                          fi
+                          GO_COMMAND="${PARAM_GO_COMMAND}"
+                          
+                          if [ -z "${PARAM_MATCH_VERSION}" ]; then
+                            echo "PARAM_MATCH_VERSION parameter cannot be empty"
+                            exit 1
+                          fi
+                          MATCH_VERSION="${PARAM_MATCH_VERSION}"
+                          
+                          NOT="${PARAM_NOT}"
+                          
+                          GOT_VERSION="$(must_get_go_version "${GO_COMMAND}")"
+                          
+                          if [ -z "${NOT}" ]; then
+                            if [ "${GOT_VERSION}" != "${MATCH_VERSION}" ]; then
+                              echo "Go version from \"${GO_COMMAND}\" does not match wanted version: \"${GOT_VERSION}\" != \"${MATCH_VERSION}\""
+                            fi
+                          else
+                            if [ "${GOT_VERSION}" == "${MATCH_VERSION}" ]; then
+                              echo "Go version from \"${GO_COMMAND}\" is \"${GOT_VERSION}\", which it should not be"
+                            fi
+                          fi
+                        environment:
+                          GOTOOLCHAIN: local
+                          PARAM_GO_COMMAND: << parameters.go_command >>
+                          PARAM_MATCH_VERSION: << parameters.match_version >>
+                          PARAM_NOT: << parameters.not >>
+                        name: 'go-dist/verify_go_version: go version for << parameters.go_command >> is << parameters.match_version >>'
+              - when:
+                  condition: << parameters.not >>
+                  steps:
+                    - run:
+                        command: |
+                          #!/bin/bash
+                          
+                          # Prints the go version parsed from the output of running "go version" -- for example, "go1.23.1". If an error is
+                          # encountered, prints the full output and exits with a status of 1. The first parameter is used as the location of the
+                          # go executable to invoke, and GOTOOLCHAIN=local is set before invoking the command to ensure that the version that is
+                          # printed is the version of the executable itself.
+                          function must_get_go_version() {
+                            GO_COMMAND=${1}
+                            if [ -z "${GO_COMMAND}" ]; then
+                              echo "GO_COMMAND parameter cannot be empty"
+                              exit 1
+                            fi
+                          
+                            GO_VERSION_FULL_OUTPUT=$(GOTOOLCHAIN=local "${GO_COMMAND}" version)
+                            EXIT_CODE=$?
+                            if [ "${EXIT_CODE}" -ne 0 ]; then
+                              exit "${EXIT_CODE}"
+                            fi
+                          
+                            VERSION_REGEXP='go version ([^ ]+)'
+                            if [[ ${GO_VERSION_FULL_OUTPUT} =~ ${VERSION_REGEXP} ]]; then
+                              CURR_GO_VERSION="${BASH_REMATCH[1]}"
+                              echo "${CURR_GO_VERSION}"
+                            else
+                              echo "Output of \"go version\" was \"${GO_VERSION_FULL_OUTPUT}\", which did not match expected regular expression \"${VERSION_REGEXP}\""
+                              exit 1
+                            fi
+                          }
+                          
+                          if [ -z "${PARAM_GO_COMMAND}" ]; then
+                            echo "PARAM_GO_COMMAND parameter cannot be empty"
+                            exit 1
+                          fi
+                          GO_COMMAND="${PARAM_GO_COMMAND}"
+                          
+                          if [ -z "${PARAM_MATCH_VERSION}" ]; then
+                            echo "PARAM_MATCH_VERSION parameter cannot be empty"
+                            exit 1
+                          fi
+                          MATCH_VERSION="${PARAM_MATCH_VERSION}"
+                          
+                          NOT="${PARAM_NOT}"
+                          
+                          GOT_VERSION="$(must_get_go_version "${GO_COMMAND}")"
+                          
+                          if [ -z "${NOT}" ]; then
+                            if [ "${GOT_VERSION}" != "${MATCH_VERSION}" ]; then
+                              echo "Go version from \"${GO_COMMAND}\" does not match wanted version: \"${GOT_VERSION}\" != \"${MATCH_VERSION}\""
+                            fi
+                          else
+                            if [ "${GOT_VERSION}" == "${MATCH_VERSION}" ]; then
+                              echo "Go version from \"${GO_COMMAND}\" is \"${GOT_VERSION}\", which it should not be"
+                            fi
+                          fi
+                        environment:
+                          GOTOOLCHAIN: local
+                          PARAM_GO_COMMAND: << parameters.go_command >>
+                          PARAM_MATCH_VERSION: << parameters.match_version >>
+                          PARAM_NOT: << parameters.not >>
+                        name: 'go-dist/verify_go_version: go version for << parameters.go_command >> is not << parameters.match_version >>'
+          with_go_build_cache:
+            description: |
+              Runs the provided steps with the go build cache.
+              Restores the go build cache before the steps and saves it afterwards.
+            parameters:
+              cache_key_prefix:
+                default: v1
+                description: |
+                  The prefix for the cache key. Is generally considered immutable, but the value can be changed to intentionally
+                  invalidate the cache.
+                type: string
+              cache_location:
+                default: ~/.cache/go-build
+                description: |
+                  The location of the Go cache directory.
+                type: string
+              custom_cache_restore_steps:
+                default: [ ]
+                description: |
+                  The steps that are run to perform the "cache restore" operation if the "custom_cache_restore_steps_enabled"
+                  parameter is true. Note that the provided steps are run directly: the machinations of orbs makes it such that it
+                  is not possible to pass the parameters provided to this command to the value of this step. Thus, if this parameter
+                  is specified, in most scenarios the caller should also explicitly specify the "cache_key_prefix",
+                  "cache_location", and "go_sum_file" parameters, and the step(s) provided to this parameter should make use of
+                  those same values.
+                type: steps
+              custom_cache_restore_steps_enabled:
+                default: false
+                description: |
+                  If true, indicates that the steps in "custom_cache_restore_steps" should be used for restoring cache.
+                  If false, runs the following step to perform the "cache restore" operation:
+                  
+                  - restore_cache:
+                      name: "go-dist/go_build_cache_restore: Restore go build cache"
+                      keys:
+                        - go-build-<< parameters.cache_key_prefix >>-<< parameters.cache_location >>-{{ checksum "<< parameters.go_sum_file >>" }}
+                  
+                  Ideally, this parameter should not be needed at all and the logic that is executed would be determined based on
+                  whether or not the "custom_cache_restore_steps" parameter is empty, but that is not currently possible in CircleCI.
+                type: boolean
+              custom_cache_save_steps:
+                default: [ ]
+                description: |
+                  The steps that are run to perform the "cache save" operation if the "custom_cache_save_steps_enabled" parameter is
+                  true. Note that the provided steps are run directly: the machinations of orbs makes it such that it is not
+                  possible to pass the parameters provided to this command to the value of this step. Thus, if this parameter is
+                  specified, in most scenarios the caller should also explicitly specify the "cache_key_prefix", "go_os_arch", and
+                  "go_dists_cache_dir" parameters, and the step(s) provided to this parameter should make use of those same values.
+                type: steps
+              custom_cache_save_steps_enabled:
+                default: false
+                description: |
+                  If true, indicates that the steps in "custom_cache_save_steps" should be used for saving cache.
+                  If false, runs the following step to perform the "cache save" operation:
+                  
+                  - save_cache:
+                      name: "go-dist/go_build_cache_save: Save go build cache"
+                      key: go-build-<< parameters.cache_key_prefix >>-<< parameters.cache_location >>-{{ checksum "<< parameters.go_sum_file >>" }}
+                      paths:
+                        - << parameters.cache_location >>
+                  
+                  Ideally, this parameter should not be needed at all and the logic that is executed would be determined based on
+                  whether or not the "custom_cache_save_steps" parameter is empty, but that is not currently possible in CircleCI.
+                type: boolean
+              go_command:
+                default: go
+                description: |
+                  The command to execute to run "go".
+                type: string
+              go_sum_file:
+                default: go.sum
+                description: |
+                  The path to the "go.sum" file. The checksum for this file is used as part of the cache key.
+                type: string
+              steps:
+                default: [ ]
+                description: |
+                  The steps to run after restoring the build cache and before saving it.
+                type: steps
+            steps:
+              - go_build_cache_restore:
+                  cache_key_prefix: << parameters.cache_key_prefix >>
+                  cache_location: << parameters.cache_location >>
+                  custom_cache_restore_steps: << parameters.custom_cache_restore_steps >>
+                  custom_cache_restore_steps_enabled: << parameters.custom_cache_restore_steps_enabled >>
+                  go_command: << parameters.go_command >>
+                  go_sum_file: << parameters.go_sum_file >>
+              - steps: << parameters.steps >>
+              - go_build_cache_save:
+                  cache_key_prefix: << parameters.cache_key_prefix >>
+                  cache_location: << parameters.cache_location >>
+                  custom_cache_save_steps: << parameters.custom_cache_save_steps >>
+                  custom_cache_save_steps_enabled: << parameters.custom_cache_save_steps_enabled >>
+                  go_command: << parameters.go_command >>
+                  go_sum_file: << parameters.go_sum_file >>
+          with_go_caches:
+            description: |
+              Runs the provided steps with the go build and module cache.
+              Restores the caches before the steps and saves them afterwards.
+            parameters:
+              build_cache_key_prefix:
+                default: v1
+                description: |
+                  The prefix for the go build cache key. Is generally considered immutable, but the value can be changed to
+                  intentionally invalidate the cache.
+                type: string
+              build_cache_location:
+                default: ~/.cache/go-build
+                description: |
+                  The location of the go build cache directory.
+                type: string
+              custom_build_cache_restore_steps:
+                default: [ ]
+                description: |
+                  The steps that are run to perform the "cache restore" operation if the "custom_cache_restore_steps_enabled"
+                  parameter is true. Note that the provided steps are run directly: the machinations of orbs makes it such that it
+                  is not possible to pass the parameters provided to this command to the value of this step. Thus, if this parameter
+                  is specified, in most scenarios the caller should also explicitly specify the "cache_key_prefix", "go_os_arch",
+                  and "go_dists_cache_dir" parameters, and the step(s) provided to this parameter should make use of those same
+                  values.
+                type: steps
+              custom_build_cache_restore_steps_enabled:
+                default: false
+                description: |
+                  If true, indicates that the steps in "custom_build_cache_restore_steps" should be used for restoring cache.
+                  If false, runs the following step to perform the "cache restore" operation:
+                  
+                  - restore_cache:
+                      name: "go-dist/go_build_cache_restore: Restore go build cache"
+                      keys:
+                        - go-build-<< parameters.build_cache_key_prefix >>-<< parameters.build_cache_location >>-{{ checksum "<< parameters.go_sum_file >>" }}
+                  
+                  Ideally, this parameter should not be needed at all and the logic that is executed would be determined based on
+                  whether or not the "custom_build_cache_restore_steps" parameter is empty, but that is not currently possible in
+                  CircleCI.
+                type: boolean
+              custom_build_cache_save_steps:
+                default: [ ]
+                description: |
+                  The steps that are run to perform the "cache save" operation if the "custom_build_cache_save_steps_enabled"
+                  parameter is true. Note that the provided steps are run directly: the machinations of orbs makes it such that it
+                  is not possible to pass the parameters provided to this command to the value of this step. Thus, if this parameter
+                  is specified, in most scenarios the caller should also explicitly specify the "cache_key_prefix", "go_os_arch",
+                  and "go_dists_cache_dir" parameters, and the step(s) provided to this parameter should make use of those same
+                  values.
+                type: steps
+              custom_build_cache_save_steps_enabled:
+                default: false
+                description: |
+                  If true, indicates that the steps in "custom_build_cache_save_steps" should be used for saving cache.
+                  If false, runs the following step to perform the "cache save" operation:
+                  
+                  - save_cache:
+                      name: "go-dist/go_build_cache_save: Save go build cache"
+                      key: go-build-<< parameters.build_cache_key_prefix >>-<< parameters.build_cache_location >>-{{ checksum "<< parameters.go_sum_file >>" }}
+                      paths:
+                        - << parameters.cache_location >>
+                  
+                  Ideally, this parameter should not be needed at all and the logic that is executed would be determined based on
+                  whether or not the "custom_build_cache_save_steps" parameter is empty, but that is not currently possible in
+                  CircleCI.
+                type: boolean
+              custom_mod_cache_restore_steps:
+                default: [ ]
+                description: |
+                  The steps that are run to perform the "cache restore" operation if the "custom_mod_cache_restore_steps_enabled"
+                  parameter is true. Note that the provided steps are run directly: the machinations of orbs makes it such that it
+                  is not possible to pass the parameters provided to this command to the value of this step. Thus, if this parameter
+                  is specified, in most scenarios the caller should also explicitly specify the "cache_key_prefix",
+                  "cache_location", and "go_sum_file" parameters, and the step(s) provided to this parameter should make use of
+                  those same values.
+                type: steps
+              custom_mod_cache_restore_steps_enabled:
+                default: false
+                description: |
+                  If true, indicates that the steps in "custom_mod_cache_restore_steps" should be used for restoring cache.
+                  If false, runs the following step to perform the "cache restore" operation:
+                  
+                  - restore_cache:
+                      name: "go-dist/go_mod_cache_restore: Restore go module cache"
+                      keys:
+                        - go-mod-<< parameters.mod_cache_key_prefix >>-<< parameters.mod_cache_location >>-{{ checksum "<< parameters.go_sum_file >>" }}
+                  
+                  Ideally, this parameter should not be needed at all and the logic that is executed would be determined based on
+                  whether or not the "custom_mod_cache_restore_steps" parameter is empty, but that is not currently possible in
+                  CircleCI.
+                type: boolean
+              custom_mod_cache_save_steps:
+                default: [ ]
+                description: |
+                  The steps that are run to perform the "cache save" operation if the "custom_mod_cache_save_steps_enabled"
+                  parameter is true. Note that the provided steps are run directly: the machinations of orbs makes it such that it
+                  is not possible to pass the parameters provided to this command to the value of this step. Thus, if this parameter
+                  is specified, in most scenarios the caller should also explicitly specify the "cache_key_prefix", "go_os_arch",
+                  and "go_dists_cache_dir" parameters, and the step(s) provided to this parameter should make use of those same
+                  values.
+                type: steps
+              custom_mod_cache_save_steps_enabled:
+                default: false
+                description: |
+                  If true, indicates that the steps in "custom_cache_save_steps" should be used for saving cache.
+                  If false, runs the following step to perform the "cache save" operation:
+                  
+                  - save_cache:
+                      name: "go-dist/go_mod_cache_save: Save go module cache"
+                      key: go-mod-<< parameters.mod_cache_key_prefix >>-<< parameters.mod_cache_location >>-{{ checksum "<< parameters.go_sum_file >>" }}
+                      paths:
+                        - << parameters.cache_location >>
+                  
+                  Ideally, this parameter should not be needed at all and the logic that is executed would be determined based on
+                  whether or not the "custom_mod_cache_save_steps" parameter is empty, but that is not currently possible in
+                  CircleCI.
+                type: boolean
+              go_command:
+                default: go
+                description: |
+                  The command to execute to run "go".
+                type: string
+              go_sum_file:
+                default: go.sum
+                description: |
+                  The path to the "go.sum" file. The checksum for this file is used as part of the cache key.
+                type: string
+              mod_cache_key_prefix:
+                default: v1
+                description: |
+                  The prefix for the go module cache key. Is generally considered immutable, but the value can be changed to
+                  intentionally invalidate the cache.
+                type: string
+              mod_cache_location:
+                default: /go/pkg/mod
+                description: |
+                  The location of the go module cache directory.
+                type: string
+              setup_steps:
+                default: [ ]
+                description: |
+                  The steps to run before any operations are performed by this job.
+                type: steps
+              steps:
+                default: [ ]
+                description: |
+                  The steps to run after restoring the build cache and before saving it.
+                type: steps
+            steps:
+              - steps: << parameters.setup_steps >>
+              - go_build_cache_restore:
+                  cache_key_prefix: << parameters.build_cache_key_prefix >>
+                  cache_location: << parameters.build_cache_location >>
+                  custom_cache_restore_steps: << parameters.custom_build_cache_restore_steps >>
+                  custom_cache_restore_steps_enabled: << parameters.custom_build_cache_restore_steps_enabled >>
+                  go_command: << parameters.go_command >>
+                  go_sum_file: << parameters.go_sum_file >>
+              - go_mod_cache_restore:
+                  cache_key_prefix: << parameters.mod_cache_key_prefix >>
+                  cache_location: << parameters.mod_cache_location >>
+                  custom_cache_restore_steps: << parameters.custom_mod_cache_restore_steps >>
+                  custom_cache_restore_steps_enabled: << parameters.custom_mod_cache_restore_steps_enabled >>
+                  go_command: << parameters.go_command >>
+                  go_sum_file: << parameters.go_sum_file >>
+              - steps: << parameters.steps >>
+              - go_build_cache_save:
+                  cache_key_prefix: << parameters.build_cache_key_prefix >>
+                  cache_location: << parameters.build_cache_location >>
+                  custom_cache_save_steps: << parameters.custom_build_cache_save_steps >>
+                  custom_cache_save_steps_enabled: << parameters.custom_build_cache_save_steps_enabled >>
+                  go_command: << parameters.go_command >>
+                  go_sum_file: << parameters.go_sum_file >>
+              - go_mod_cache_save:
+                  cache_key_prefix: << parameters.mod_cache_key_prefix >>
+                  cache_location: << parameters.mod_cache_location >>
+                  custom_cache_save_steps: << parameters.custom_mod_cache_save_steps >>
+                  custom_cache_save_steps_enabled: << parameters.custom_mod_cache_save_steps_enabled >>
+                  go_command: << parameters.go_command >>
+                  go_sum_file: << parameters.go_sum_file >>
+          with_go_mod_cache:
+            description: |
+              Runs the provided steps with the go module cache.
+              Restores the go build cache before the steps and saves it afterwards.
+            parameters:
+              cache_key_prefix:
+                default: v1
+                description: |
+                  The prefix for the cache key. Is generally considered immutable, but the value can be changed to intentionally
+                  invalidate the cache.
+                type: string
+              cache_location:
+                default: /go/pkg/mod
+                description: |
+                  The location of the go module cache directory.
+                type: string
+              custom_cache_restore_steps:
+                default: [ ]
+                description: |
+                  The steps that are run to perform the "cache restore" operation if the "custom_cache_restore_steps_enabled"
+                  parameter is true. Note that the provided steps are run directly: the machinations of orbs makes it such that it
+                  is not possible to pass the parameters provided to this command to the value of this step. Thus, if this parameter
+                  is specified, in most scenarios the caller should also explicitly specify the "cache_key_prefix",
+                  "cache_location", and "go_sum_file" parameters, and the step(s) provided to this parameter should make use of
+                  those same values.
+                type: steps
+              custom_cache_restore_steps_enabled:
+                default: false
+                description: |
+                  If true, indicates that the steps in "custom_cache_restore_steps" should be used for restoring cache.
+                  If false, runs the following step to perform the "cache restore" operation:
+                  
+                  - restore_cache:
+                      name: "go-dist/go_mod_cache_restore: Restore go module cache"
+                      keys:
+                        - go-mod-<< parameters.cache_key_prefix >>-<< parameters.cache_location >>-{{ checksum "<< parameters.go_sum_file >>" }}
+                  
+                  Ideally, this parameter should not be needed at all and the logic that is executed would be determined based on
+                  whether or not the "custom_cache_restore_steps" parameter is empty, but that is not currently possible in CircleCI.
+                type: boolean
+              custom_cache_save_steps:
+                default: [ ]
+                description: |
+                  The steps that are run to perform the "cache save" operation if the "custom_cache_save_steps_enabled" parameter is
+                  true. Note that the provided steps are run directly: the machinations of orbs makes it such that it is not
+                  possible to pass the parameters provided to this command to the value of this step. Thus, if this parameter is
+                  specified, in most scenarios the caller should also explicitly specify the "cache_key_prefix", "go_os_arch", and
+                  "go_dists_cache_dir" parameters, and the step(s) provided to this parameter should make use of those same values.
+                type: steps
+              custom_cache_save_steps_enabled:
+                default: false
+                description: |
+                  If true, indicates that the steps in "custom_cache_save_steps" should be used for saving cache.
+                  If false, runs the following step to perform the "cache save" operation:
+                  
+                  - save_cache:
+                      name: "go-dist/go_mod_cache_save: Save go module cache"
+                      key: go-mod-<< parameters.cache_key_prefix >>-<< parameters.cache_location >>-{{ checksum "<< parameters.go_sum_file >>" }}
+                      paths:
+                        - << parameters.cache_location >>
+                  
+                  Ideally, this parameter should not be needed at all and the logic that is executed would be determined based on
+                  whether or not the "custom_cache_save_steps" parameter is empty, but that is not currently possible in CircleCI.
+                type: boolean
+              go_command:
+                default: go
+                description: |
+                  The command to execute to run "go".
+                type: string
+              go_sum_file:
+                default: go.sum
+                description: |
+                  The path to the "go.sum" file. The checksum for this file is used as part of the cache key.
+                type: string
+              steps:
+                default: [ ]
+                description: |
+                  The steps to run after restoring the module cache and before saving it.
+                type: steps
+            steps:
+              - go_mod_cache_restore:
+                  cache_key_prefix: << parameters.cache_key_prefix >>
+                  cache_location: << parameters.cache_location >>
+                  custom_cache_restore_steps: << parameters.custom_cache_restore_steps >>
+                  custom_cache_restore_steps_enabled: << parameters.custom_cache_restore_steps_enabled >>
+                  go_command: << parameters.go_command >>
+                  go_sum_file: << parameters.go_sum_file >>
+              - steps: << parameters.steps >>
+              - go_mod_cache_save:
+                  cache_key_prefix: << parameters.cache_key_prefix >>
+                  cache_location: << parameters.cache_location >>
+                  custom_cache_save_steps: << parameters.custom_cache_save_steps >>
+                  custom_cache_save_steps_enabled: << parameters.custom_cache_save_steps_enabled >>
+                  go_command: << parameters.go_command >>
+                  go_sum_file: << parameters.go_sum_file >>
+        examples:
+          example_install_go_std:
+            description: |
+              Job that installs the standard libraries ("std") for a Go distribution that already exists in an image.
+            usage:
+              version: "2.1"
+              orbs:
+                go-dist: palantir/go-dist@0.4.0
+              jobs:
+                install_go_std:
+                  docker:
+                    - environment:
+                        CGO_ENABLED: 0
+                        GOMAXPROCS: 2
+                      image: cimg/go:1.23.2
+                  steps:
+                    - checkout
+                    - go-dist/install_go_std
+              workflows: null
+          example_setup_go_std:
+            description: |
+              Job that sets up a go distribution at the expected location. Because it starts with a base image that has a "go"
+              executable, the "setup_go_dist" command ensures that the go distribution for that go version is set up in the expected
+              manner.
+            usage:
+              version: "2.1"
+              orbs:
+                go-dist: palantir/go-dist@0.4.0
+              jobs:
+                setup_go_dist:
+                  docker:
+                    - image: cimg/go:1.23.2
+                  environment:
+                    CGO_ENABLED: 0
+                    GOMAXPROCS: 2
+                    GOTOOLCHAIN: local
+                  steps:
+                    - checkout
+                    - run:
+                        command: |
+                          sudo mkdir /go
+                          sudo chown -R circleci:circleci /go
+                        name: Set up basic permissions to allow setting up distribution
+                    - go-dist/setup_go_dist
+              workflows: null
+      godel:
+        version: 2.1
+        description: |
+          Orb for setting up godel, managing its cache, and running tasks.
+        display:
+          home_url: https://github.com/palantir
+          source_url: https://github.com/palantir
+        commands:
+          cache:
+            description: |
+              Populate the godel cache.
+            parameters:
+              cache_key_prefix:
+                default: v1
+                description: |
+                  The prefix for the cache key. Is generally considered immutable, but the value can be changed to intentionally
+                  invalidate the cache.
+                type: string
+              cache_location:
+                default: ~/.godel
+                description: |
+                  The location of the Go cache directory.
+                type: string
+              custom_cache_restore_steps:
+                default: [ ]
+                description: |
+                  The steps that are run to perform the "cache restore" operation if the "custom_cache_restore_steps_enabled"
+                  parameter is true. Note that the provided steps are run directly: the machinations of orbs makes it such that it
+                  is not possible to pass the parameters provided to this command to the value of this step. Thus, if this parameter
+                  is specified, in most scenarios the caller should also explicitly specify the "cache_key_prefix" and
+                  "cache_location" parameters, and the step(s) provided to this parameter should make use of those same values.
+                type: steps
+              custom_cache_restore_steps_enabled:
+                default: false
+                description: |
+                  If true, indicates that the steps in "custom_cache_restore_steps" should be used for restoring cache.
+                  If false, runs the following step to perform the "cache restore" operation:
+                  
+                  - restore_cache:
+                      name: "godel/cache_restore: Restore godel cache"
+                      keys:
+                        - godel-<< parameters.cache_key_prefix >>-<< parameters.cache_location >>-{{ checksum "godelw" }}-{{ checksum "godel/config/godel.yml" }}
+                  
+                  Ideally, this parameter should not be needed at all and the logic that is executed would be determined based on
+                  whether or not the "custom_cache_restore_steps" parameter is empty, but that is not currently possible in CircleCI.
+                type: boolean
+              custom_cache_save_steps:
+                default: [ ]
+                description: |
+                  The steps that are run to perform the "cache save" operation if the "custom_cache_save_steps_enabled" parameter is
+                  true. Note that the provided steps are run directly: the machinations of orbs makes it such that it is not
+                  possible to pass the parameters provided to this command to the value of this step. Thus, if this parameter is
+                  specified, in most scenarios the caller should also explicitly specify the "cache_key_prefix" and "cache_location"
+                  parameters, and the step(s) provided to this parameter should make use of those same values.
+                type: steps
+              custom_cache_save_steps_enabled:
+                default: false
+                description: |
+                  If true, indicates that the steps in "custom_cache_save_steps" should be used for saving cache.
+                  If false, runs the following step to perform the "cache save" operation:
+                  
+                  - save_cache:
+                      name: "godel/cache_save: Save godel cache"
+                      key: godel-<< parameters.cache_key_prefix >>-<< parameters.cache_location >>-{{ checksum "godelw" }}-{{ checksum "godel/config/godel.yml" }}
+                      paths:
+                        - << parameters.cache_location >>
+                  
+                  Ideally, this parameter should not be needed at all and the logic that is executed would be determined based on
+                  whether or not the "custom_cache_save_steps" parameter is empty, but that is not currently possible in CircleCI.
+                type: boolean
+            steps:
+              - cache_restore:
+                  cache_key_prefix: <<parameters.cache_key_prefix>>
+                  cache_location: <<parameters.cache_location>>
+                  custom_cache_restore_steps: << parameters.custom_cache_restore_steps >>
+                  custom_cache_restore_steps_enabled: << parameters.custom_cache_restore_steps_enabled >>
+              - run:
+                  command: ./godelw version
+                  name: 'godel/cache: run ./godelw version to download all godel-related binaries'
+              - cache_save:
+                  cache_key_prefix: <<parameters.cache_key_prefix>>
+                  cache_location: <<parameters.cache_location>>
+                  custom_cache_save_steps: << parameters.custom_cache_save_steps >>
+                  custom_cache_save_steps_enabled: << parameters.custom_cache_save_steps_enabled >>
+          cache_restore:
+            description: |
+              Restores the godel cache.
+            parameters:
+              cache_key_prefix:
+                default: v1
+                description: |
+                  The prefix for the cache key. Is generally considered immutable, but the value can be changed to intentionally
+                  invalidate the cache.
+                type: string
+              cache_location:
+                default: ~/.godel
+                description: |
+                  The location of the Go cache directory.
+                type: string
+              custom_cache_restore_steps:
+                default: [ ]
+                description: |
+                  The steps that are run to perform the "cache restore" operation if the "custom_cache_restore_steps_enabled"
+                  parameter is true. Note that the provided steps are run directly: the machinations of orbs makes it such that it
+                  is not possible to pass the parameters provided to this command to the value of this step. Thus, if this parameter
+                  is specified, in most scenarios the caller should also explicitly specify the "cache_key_prefix" and
+                  "cache_location" parameters, and the step(s) provided to this parameter should make use of those same values.
+                type: steps
+              custom_cache_restore_steps_enabled:
+                default: false
+                description: |
+                  If true, indicates that the steps in "custom_cache_restore_steps" should be used for restoring cache.
+                  If false, runs the following step to perform the "cache restore" operation:
+                  
+                  - restore_cache:
+                      name: "godel/cache_restore: Restore godel cache"
+                      keys:
+                        - godel-<< parameters.cache_key_prefix >>-<< parameters.cache_location >>-{{ checksum "godelw" }}-{{ checksum "godel/config/godel.yml" }}
+                  
+                  Ideally, this parameter should not be needed at all and the logic that is executed would be determined based on
+                  whether or not the "custom_cache_restore_steps" parameter is empty, but that is not currently possible in CircleCI.
+                type: boolean
+            steps:
+              - run:
+                  command: |
+                    #!/bin/bash
+                    
+                    if [ -n "${PARAM_DEBUG_ORB}" ]; then
+                      set -x
+                    fi
+                    
+                    ACTUAL_CACHE_LOCATION=${GODEL_HOME:=~/.godel}
+                    CANONICAL_ACTUAL_CACHE_LOCATION=${ACTUAL_CACHE_LOCATION}
+                    if [ -e "${CANONICAL_ACTUAL_CACHE_LOCATION}" ]; then
+                      CANONICAL_ACTUAL_CACHE_LOCATION=$(readlink -f "${CANONICAL_ACTUAL_CACHE_LOCATION}")
+                    fi
+                    
+                    # replace tilde with home directory
+                    JOB_CACHE_LOCATION=${PARAM_CACHE_LOCATION}
+                    JOB_CACHE_LOCATION="${JOB_CACHE_LOCATION/#\~/$HOME}"
+                    CANONICAL_JOB_CACHE_LOCATION=${JOB_CACHE_LOCATION}
+                    if [ -e "${CANONICAL_JOB_CACHE_LOCATION}" ]; then
+                      CANONICAL_JOB_CACHE_LOCATION=$(readlink -f "${CANONICAL_JOB_CACHE_LOCATION}")
+                    fi
+                    
+                    if [ "${CANONICAL_JOB_CACHE_LOCATION}" == "${CANONICAL_ACTUAL_CACHE_LOCATION}" ]; then
+                      echo "Cache location for job matched actual cache location: both are \"${CANONICAL_ACTUAL_CACHE_LOCATION}\""
+                    else
+                      echo "Cache location for job did not match actual cache location: \"${CANONICAL_JOB_CACHE_LOCATION}\" != \"${CANONICAL_ACTUAL_CACHE_LOCATION}\""
+                      exit 1
+                    fi
+                  environment:
+                    PARAM_CACHE_LOCATION: << parameters.cache_location >>
+                  name: 'godel/cache_restore: Print expected location for godel cache'
+              - unless:
+                  condition: << parameters.custom_cache_restore_steps_enabled >>
+                  steps:
+                    - restore_cache:
+                        keys:
+                          - godel-<< parameters.cache_key_prefix >>-<< parameters.cache_location >>-{{ checksum "godelw" }}-{{ checksum "godel/config/godel.yml" }}
+                        name: 'godel/cache_restore: Restore godel cache'
+              - when:
+                  condition: << parameters.custom_cache_restore_steps_enabled >>
+                  steps:
+                    - steps: << parameters.custom_cache_restore_steps >>
+          cache_save:
+            description: |
+              Saves the godel cache.
+            parameters:
+              cache_key_prefix:
+                default: v1
+                description: |
+                  The prefix for the cache key. Is generally considered immutable, but the value can be changed to intentionally
+                  invalidate the cache.
+                type: string
+              cache_location:
+                default: ~/.godel
+                description: |
+                  The location of the Go cache directory.
+                type: string
+              custom_cache_save_steps:
+                default: [ ]
+                description: |
+                  The steps that are run to perform the "cache save" operation if the "custom_cache_save_steps_enabled" parameter is
+                  true. Note that the provided steps are run directly: the machinations of orbs makes it such that it is not
+                  possible to pass the parameters provided to this command to the value of this step. Thus, if this parameter is
+                  specified, in most scenarios the caller should also explicitly specify the "cache_key_prefix" and "cache_location"
+                  parameters, and the step(s) provided to this parameter should make use of those same values.
+                type: steps
+              custom_cache_save_steps_enabled:
+                default: false
+                description: |
+                  If true, indicates that the steps in "custom_cache_save_steps" should be used for saving cache.
+                  If false, runs the following step to perform the "cache save" operation:
+                  
+                  - save_cache:
+                      name: "godel/cache_save: Save godel cache"
+                      key: godel-<< parameters.cache_key_prefix >>-<< parameters.cache_location >>-{{ checksum "godelw" }}-{{ checksum "godel/config/godel.yml" }}
+                      paths:
+                        - << parameters.cache_location >>
+                  
+                  Ideally, this parameter should not be needed at all and the logic that is executed would be determined based on
+                  whether or not the "custom_cache_save_steps" parameter is empty, but that is not currently possible in CircleCI.
+                type: boolean
+            steps:
+              - run:
+                  command: |
+                    #!/bin/bash
+                    
+                    if [ -n "${PARAM_DEBUG_ORB}" ]; then
+                      set -x
+                    fi
+                    
+                    ACTUAL_CACHE_LOCATION=${GODEL_HOME:=~/.godel}
+                    CANONICAL_ACTUAL_CACHE_LOCATION=${ACTUAL_CACHE_LOCATION}
+                    if [ -e "${CANONICAL_ACTUAL_CACHE_LOCATION}" ]; then
+                      CANONICAL_ACTUAL_CACHE_LOCATION=$(readlink -f "${CANONICAL_ACTUAL_CACHE_LOCATION}")
+                    fi
+                    
+                    # replace tilde with home directory
+                    JOB_CACHE_LOCATION=${PARAM_CACHE_LOCATION}
+                    JOB_CACHE_LOCATION="${JOB_CACHE_LOCATION/#\~/$HOME}"
+                    CANONICAL_JOB_CACHE_LOCATION=${JOB_CACHE_LOCATION}
+                    if [ -e "${CANONICAL_JOB_CACHE_LOCATION}" ]; then
+                      CANONICAL_JOB_CACHE_LOCATION=$(readlink -f "${CANONICAL_JOB_CACHE_LOCATION}")
+                    fi
+                    
+                    if [ "${CANONICAL_JOB_CACHE_LOCATION}" == "${CANONICAL_ACTUAL_CACHE_LOCATION}" ]; then
+                      echo "Cache location for job matched actual cache location: both are \"${CANONICAL_ACTUAL_CACHE_LOCATION}\""
+                    else
+                      echo "Cache location for job did not match actual cache location: \"${CANONICAL_JOB_CACHE_LOCATION}\" != \"${CANONICAL_ACTUAL_CACHE_LOCATION}\""
+                      exit 1
+                    fi
+                  environment:
+                    PARAM_CACHE_LOCATION: << parameters.cache_location >>
+                  name: 'godel/cache_save: Verify that godel cache directory location is correct'
+              - unless:
+                  condition: << parameters.custom_cache_save_steps_enabled >>
+                  steps:
+                    - save_cache:
+                        key: godel-<< parameters.cache_key_prefix >>-<< parameters.cache_location >>-{{ checksum "godelw" }}-{{ checksum "godel/config/godel.yml" }}
+                        name: 'godel/cache_save: Save godel cache'
+                        paths:
+                          - << parameters.cache_location >>
+              - when:
+                  condition: << parameters.custom_cache_save_steps_enabled >>
+                  steps:
+                    - steps: << parameters.custom_cache_save_steps >>
+          run_test_steps:
+            description: |
+              Sets up test directory and runs the provided test steps.
+            parameters:
+              steps:
+                default: [ ]
+                description: |
+                  The steps to run after creating the test directory and before savings its artifacts.
+                type: steps
+              test_results_location:
+                default: /tmp/test-results
+                description: |
+                  The location to which tests results are written.
+                type: string
+            steps:
+              - run:
+                  command: |
+                    #!/bin/bash
+                    
+                    if [ -z "${PARAM_TESTS_DIR}" ]; then
+                      echo "PARAM_TESTS_DIR cannot be empty"
+                      exit 1
+                    fi
+                    TESTS_DIR=${PARAM_TESTS_DIR}
+                    
+                    printf '%s' "Creating tests directory at ${TESTS_DIR} ... "
+                    mkdir -p "${TESTS_DIR}"
+                    EXIT_CODE=$?
+                    if [ "${EXIT_CODE}" -ne 0 ]; then
+                      echo "Failed to run \"mkdir -p \"${TESTS_DIR}\"\""
+                      exit 1
+                    fi
+                    echo "done"
+                    
+                    ls -la "${TESTS_DIR}"
+                    ls -la "${TESTS_DIR}/.."
+                  environment:
+                    PARAM_TESTS_DIR: << parameters.test_results_location >>
+                  name: 'godel/run_test_steps: Create tests results directory'
+              - steps: << parameters.steps >>
+              - store_test_results:
+                  path: << parameters.test_results_location >>
+              - store_artifacts:
+                  destination: test-results
+                  path: << parameters.test_results_location >>
+          test:
+            description: |
+              Sets up test directory and runs tests.
+            parameters:
+              test_args:
+                default: -vet=off
+                description: |
+                  Arguments to pass to the "./godelw test" command.
+                  
+                  These arguments are passed after a "--", so are all interpreted as positional arguments to the "./godelw test"
+                  command. The "test_flags" parameter should be use to specify any flags on the "./godelw test" command itself.
+                type: string
+              test_file_name_addition:
+                default: ""
+                description: |
+                  If specified, this string is appended to the file name generated for tests. By default, the output file name for
+                  tests is "${CIRCLE_PROJECT_REPONAME}-tests.xml". If this parameter is specified, the output file name becomes
+                  "${CIRCLE_PROJECT_REPONAME}-${test_file_name_addition}-tests.xml". Note that a leading hyphen is automatically
+                  added, so the value of this parameter does not need a leading hyphen.
+                type: string
+              test_flags:
+                default: ""
+                description: |
+                  Flags provided to the "./godelw test" command.
+                  
+                  These flags are provided after "./godelw test" but before a "--", and are thus interpreted as flags on the
+                  "./godelw test" command. These flags are additive to the flags/configuration set by the command itself.
+                type: string
+              test_results_location:
+                default: /tmp/test-results
+                description: |
+                  The location to which tests results are written.
+                type: string
+            steps:
+              - run_test_steps:
+                  steps:
+                    - run:
+                        command: |
+                          #!/bin/bash
+                          
+                          function run_godel_test() {
+                            TEST_FILE_NAME_ADDITION="${PARAM_TEST_FILE_NAME_ADDITION}"
+                            if [ -n "${TEST_FILE_NAME_ADDITION}" ]; then
+                              TEST_FILE_NAME_ADDITION="-${TEST_FILE_NAME_ADDITION}"
+                            fi
+                          
+                            TEST_FLAGS="${PARAM_TEST_FLAGS}"
+                            if [ -n "${TEST_FLAGS}" ]; then
+                              TEST_FLAGS=" ${TEST_FLAGS}"
+                            fi
+                          
+                            echo "Running \"./godelw test --junit-output=\"${PARAM_TESTS_DIR}/${CIRCLE_PROJECT_REPONAME}${TEST_FILE_NAME_ADDITION}-tests.xml\"${TEST_FLAGS} -- ${PARAM_TEST_ARGS}\" ... "
+                            # PARAM_TEST_ARGS not being in quotes is intentional, since it is passed as command-line arguments.
+                            # shellcheck disable=SC2086
+                            ./godelw test --junit-output="${PARAM_TESTS_DIR}/${CIRCLE_PROJECT_REPONAME}${TEST_FILE_NAME_ADDITION}-tests.xml"${TEST_FLAGS} -- ${PARAM_TEST_ARGS}
+                            echo "done"
+                          }
+                          
+                          if [ -n "${PARAM_SCRIPT_OUTPUT_FILE}" ]; then
+                            run_godel_test 2>&1 | tee "${PARAM_SCRIPT_OUTPUT_FILE}"
+                          else
+                            run_godel_test
+                          fi
+                        environment:
+                          GOTOOLCHAIN: local
+                          PARAM_TEST_ARGS: << parameters.test_args >>
+                          PARAM_TEST_FILE_NAME_ADDITION: << parameters.test_file_name_addition >>
+                          PARAM_TEST_FLAGS: << parameters.test_flags >>
+                          PARAM_TESTS_DIR: << parameters.test_results_location >>
+                        name: 'godel/test: Run ./godelw test'
+                  test_results_location: << parameters.test_results_location >>
+          verify:
+            description: |
+              Sets up test directory and runs tests.
+            parameters:
+              test_results_location:
+                default: /tmp/test-results
+                description: |
+                  The location to which tests results are written. If empty, tests are skipped.
+                type: string
+              verify_args:
+                default: ""
+                description: |
+                  Arguments to pass to the "./godelw verify" command.
+                type: string
+            steps:
+              - when:
+                  condition: << parameters.test_results_location >>
+                  steps:
+                    - run_test_steps:
+                        steps:
+                          - run:
+                              command: |
+                                #!/bin/bash
+                                
+                                function run_godel_verify() {
+                                  TEST_ARGS=
+                                  if [ -n "${PARAM_TESTS_DIR}" ]; then
+                                    TEST_ARGS="--junit-output=${PARAM_TESTS_DIR}/${CIRCLE_PROJECT_REPONAME}-tests.xml"
+                                  else
+                                    TEST_ARGS="--skip-test"
+                                  fi
+                                
+                                  VERIFY_ARGS=${PARAM_VERIFY_ARGS}
+                                  if [ -n "${VERIFY_ARGS}" ]; then
+                                    VERIFY_ARGS=" ${VERIFY_ARGS}"
+                                  fi
+                                
+                                  # if "--parallel" is specified as an argument, only apply it if the "check" task exists (newer versions of godel that
+                                  # use the golangci-lint plugin do not support this flag for the "verify" task)
+                                  PARALLEL_REGEXP='(.*)--parallel(=[A-Za-z]+)?(.*)'
+                                  if [[ $VERIFY_ARGS =~ $PARALLEL_REGEXP ]]; then
+                                    if ! ./godelw check --help > /dev/null 2>&1; then
+                                      VERIFY_ARGS=${BASH_REMATCH[1]}${BASH_REMATCH[3]}
+                                    fi
+                                  fi
+                                
+                                  echo "Running \"./godelw verify --apply=false ${TEST_ARGS}${VERIFY_ARGS}\" ... "
+                                  # VERIFY_ARGS not being in quotes is intentional, since it is passed as command-line arguments.
+                                  # shellcheck disable=SC2086
+                                  ./godelw verify --apply=false "${TEST_ARGS}"${VERIFY_ARGS}
+                                  echo "done"
+                                }
+                                
+                                if [ -n "${PARAM_SCRIPT_OUTPUT_FILE}" ]; then
+                                  run_godel_verify 2>&1 | tee "${PARAM_SCRIPT_OUTPUT_FILE}"
+                                else
+                                  run_godel_verify
+                                fi
+                              environment:
+                                GOTOOLCHAIN: local
+                                PARAM_TESTS_DIR: << parameters.test_results_location >>
+                                PARAM_VERIFY_ARGS: << parameters.verify_args >>
+                              name: 'godel/verify: Run "./godelw verify"'
+                        test_results_location: << parameters.test_results_location >>
+              - unless:
+                  condition: << parameters.test_results_location >>
+                  steps:
+                    - run:
+                        command: |
+                          #!/bin/bash
+                          
+                          function run_godel_verify() {
+                            TEST_ARGS=
+                            if [ -n "${PARAM_TESTS_DIR}" ]; then
+                              TEST_ARGS="--junit-output=${PARAM_TESTS_DIR}/${CIRCLE_PROJECT_REPONAME}-tests.xml"
+                            else
+                              TEST_ARGS="--skip-test"
+                            fi
+                          
+                            VERIFY_ARGS=${PARAM_VERIFY_ARGS}
+                            if [ -n "${VERIFY_ARGS}" ]; then
+                              VERIFY_ARGS=" ${VERIFY_ARGS}"
+                            fi
+                          
+                            # if "--parallel" is specified as an argument, only apply it if the "check" task exists (newer versions of godel that
+                            # use the golangci-lint plugin do not support this flag for the "verify" task)
+                            PARALLEL_REGEXP='(.*)--parallel(=[A-Za-z]+)?(.*)'
+                            if [[ $VERIFY_ARGS =~ $PARALLEL_REGEXP ]]; then
+                              if ! ./godelw check --help > /dev/null 2>&1; then
+                                VERIFY_ARGS=${BASH_REMATCH[1]}${BASH_REMATCH[3]}
+                              fi
+                            fi
+                          
+                            echo "Running \"./godelw verify --apply=false ${TEST_ARGS}${VERIFY_ARGS}\" ... "
+                            # VERIFY_ARGS not being in quotes is intentional, since it is passed as command-line arguments.
+                            # shellcheck disable=SC2086
+                            ./godelw verify --apply=false "${TEST_ARGS}"${VERIFY_ARGS}
+                            echo "done"
+                          }
+                          
+                          if [ -n "${PARAM_SCRIPT_OUTPUT_FILE}" ]; then
+                            run_godel_verify 2>&1 | tee "${PARAM_SCRIPT_OUTPUT_FILE}"
+                          else
+                            run_godel_verify
+                          fi
+                        environment:
+                          GOTOOLCHAIN: local
+                          PARAM_VERIFY_ARGS: << parameters.verify_args >>
+                        name: 'godel/verify: Run "./godelw verify --skip-test"'
+        examples:
+          example_godel_cache:
+            description: |
+              Set up godel distribution.
+            usage:
+              version: "2.1"
+              orbs:
+                godel: palantir/godel@0.7.0
+              jobs:
+                godel_cache:
+                  docker:
+                    - image: cimg/base:stable
+                  steps:
+                    - checkout
+                    - godel/cache
+              workflows: null
+    commands:
+      common_add_java_home_bin_to_path:
+        description: |
+          If the JAVA_HOME environment variable is set,
+          updates the BASH_ENV file such that "$JAVA_HOME/bin"
+          is prepended to the PATH.
+          
+          In most instances, this ensures that the version of Java invoked by the
+          "java" command will be the one in the JAVA_HOME distribution.
+          
+          Is a noop/success is the JAVA_HOME environment variable is empty.
+        steps:
+          - run:
+              command: |
+                #!/bin/bash
+                
+                if [ -n "${PARAM_DEBUG_ORB}" ]; then
+                  set -x
+                fi
+                
+                if [ -z "${JAVA_HOME}" ]; then
+                  echo "JAVA_HOME environment variable is not set: nothing to do"
+                  exit 0
+                fi
+                
+                # Variables in single-quote is intentional, since BASH_ENV will execute
+                # shellcheck disable=SC2016
+                echo 'export PATH=$JAVA_HOME/bin:$PATH' >> "${BASH_ENV}"
+                
+                # source command is OK since this is written in previous line
+                # shellcheck disable=SC1090
+                source "${BASH_ENV}"
+                
+                java -version
+              name: 'go-jobs/common_add_java_home_bin_to_path: Update PATH to use JAVA_HOME value'
+      common_delete_unrelated_tags:
+        description: |
+          Runs the "delete_unrelated_tags" program if it exists.
+          
+          If it does not exist, prints a message that it does not exist and exits.
+          The exit status is still successful.
+        steps:
+          - run:
+              command: |
+                #!/bin/bash
+                
+                function run_delete_unrelated_tags() {
+                  if [ -z "$(command -v delete_unrelated_tags)" ]; then
+                    # if executable does not exist, short-circuit
+                    echo "delete_unrelated_tags command does not exist"
+                    exit 0
+                  fi
+                
+                  echo 'Running delete_unrelated_tags ... '
+                  delete_unrelated_tags
+                  echo 'done'
+                }
+                
+                # run the script if PARAM_SKIP_RUN is not specified
+                if [ -z "${PARAM_SKIP_RUN}" ]; then
+                  if [ -n "${PARAM_DEBUG_ORB}" ]; then
+                    set -x
+                  fi
+                
+                  if [ -n "${PARAM_SCRIPT_OUTPUT_FILE}" ]; then
+                    run_delete_unrelated_tags 2>&1 | tee "${PARAM_SCRIPT_OUTPUT_FILE}"
+                  else
+                    run_delete_unrelated_tags
+                  fi
+                fi
+              name: 'go-jobs/common_delete_unrelated_tags: Run delete_unrelated_tags'
+      default_setup_steps:
+        description: |
+          Runs the default setup steps.
+        parameters:
+          checkout_steps:
+            default:
+              - checkout
+            description: |
+              The steps to run to check out the repository.
+            type: steps
+        steps:
+          - steps: << parameters.checkout_steps >>
+          - run:
+              command: |
+                sudo mkdir /go
+                sudo chown -R circleci:circleci /go
+              name: Set up basic permissions to allow setting up distribution
+      restore_cache_with_mod_time:
+        description: |
+          Restores a persisted workspace at a particular directory and touches
+          all files in the directory to update its modification time.
+        parameters:
+          cache_dir:
+            description: |
+              The path to the cache directory to restore.
+            type: string
+        steps:
+          - restore_cache:
+              keys:
+                - v1-<< parameters.cache_dir >>-{{ .Environment.CIRCLE_WORKFLOW_ID }}-{{ .Environment.CIRCLE_SHA1 }}
+              name: 'go-jobs/restore_cache_with_mod_time: Restore cache at << parameters.cache_dir >>'
+          - run:
+              command: |
+                #!/bin/bash
+                
+                if [ -n "${PARAM_DEBUG_ORB}" ]; then
+                  set -x
+                fi
+                
+                if [ -z "${PARAM_DIR}" ]; then
+                  echo "PARAM_DIR parameter cannot be empty"
+                  exit 1
+                fi
+                DIR="${PARAM_DIR}"
+                
+                # gödel cache only works if cached outputs are newer than source that generates it. CircleCI's
+                # "attach_workspace" and cache restore operations restores the output directory with the original modification dates,
+                # but the source's modification date in CI is the time of checkout, which is after the artifacts were built.
+                # Manually touch all of the output directory files to mark them as being generated after source was checked out.
+                if [[ -d "${DIR}" ]]; then
+                  find "${DIR}" -exec touch {} \;;
+                fi
+              environment:
+                PARAM_DIR: << parameters.cache_dir >>
+              name: 'go-jobs/restore_cache_with_mod_time: Touch all restored output'
+      run_godel_steps:
+        description: |
+          Runs the provided steps with go caches, a go distribution, and godel caches all set up.
+        parameters:
+          build_cache_key_prefix:
+            default: v3
+            description: |
+              The prefix for the cache key. Is generally considered immutable, but the value can be changed to intentionally
+              invalidate the cache.
+            type: string
+          build_cache_location:
+            default: ~/.cache/go-build
+            description: |
+              The location of the go build cache directory.
+            type: string
+          go_command:
+            default: go
+            description: |
+              The command to execute to run "go".
+            type: string
+          go_dist_download_url_prefix:
+            default: https://golang.org/dl/
+            description: |
+              The URL prefix for downloading a go distribution. Used if the script needs to download a Go distribution. The URL
+              that is used for downloads is ${go-dist-download-url-prefix}${go-version}.${go-os-arch}.tar.gz. The default value
+              uses the official public Golang site, but this value can be changed to use alternate download URLs such as
+              internal mirrors.
+            type: string
+          go_dists_cache_dir:
+            default: /go/go-dists-cache
+            description: |
+              The directory that acts as a cache for go distributions. If non-empty, if the command needs a particular Go
+              distribution and it is not in the ${go-dists-dir} directory, it is checked for in this directory. If it exists, it
+              is copied to the distributions directory. If the script downloads the distribution, it places it in this directory
+              as well as the ${go-dists-dir} directory. The names of the distribution directories in this directory are the go
+              version for the distribution. If this value is non-empty, it is saved and restored as part of CircleCI caching if
+              the "go_version" parameter is non-empty.
+            type: string
+          go_dists_cache_key_prefix:
+            default: v1
+            description: |
+              The prefix for the go distributions cache key. Is generally considered immutable, but the value can be changed to
+              intentionally invalidate the cache.
+            type: string
+          go_dists_dir:
+            default: /go/go-dists
+            description: |
+              The directory in which go distributions are stored. The command ensures that the "go" directory in this directory
+              is the Go distribution directory for the desired version (or a symlink to that directory). This directory is also
+              used to store full Go distributions, where the name of the Go distribution directory is the Go version (for
+              example, "go1.23.1").
+            type: string
+          go_os_arch:
+            default: linux-amd64
+            description: |
+              The OS/Architecture for the distribution.
+            type: string
+          go_os_archs_to_build:
+            default: ""
+            description: |
+              The OS/Architecture combinations for which the standard library should be built and installed. Specified as
+              "${GOOS}-${GOARCH}" -- for example, "linux-amd64". Can be comma-separated to specify multiple OS/Architecture
+              combinations -- for example, "linux-amd64,darwin-arm64". If blank, uses the OS/Architecture of the environment.
+            type: string
+          go_sum_file:
+            default: go.sum
+            description: |
+              The path to the "go.sum" file. The checksum for this file is used as part of the cache key.
+            type: string
+          go_version:
+            default: ""
+            description: |
+              If non-empty, determines the value of the go distribution that is used as the toolchain. If empty, assumes that
+              the "go" is already available as an executable in PATH. This should be the full Go version (for example,
+              "go1.23.1", "go1.23rc1", etc.)
+            type: string
+          godel_cache_key_prefix:
+            default: v1
+            description: |
+              The prefix for the cache key. Is generally considered immutable, but the value can be changed to intentionally
+              invalidate the cache.
+            type: string
+          godel_cache_location:
+            default: ~/.godel
+            description: |
+              The location of the Go cache directory.
+            type: string
+          mod_cache_key_prefix:
+            default: v3
+            description: |
+              The prefix for the cache key. Is generally considered immutable, but the value can be changed to intentionally
+              invalidate the cache.
+            type: string
+          mod_cache_location:
+            default: /go/pkg/mod
+            description: |
+              The location of the go module cache directory.
+            type: string
+          setup_steps:
+            default:
+              - checkout
+              - common_delete_unrelated_tags
+              - common_add_java_home_bin_to_path
+            description: |
+              The steps to run before caches are set up. The default value checks out the repository, deletes unrelated tags,
+              and sets up the JAVA_HOME environment variable.
+            type: steps
+          steps:
+            default: [ ]
+            description: |
+              The steps to run after caches are restored but before they are persisted.
+            type: steps
+        steps:
+          - go-dist/with_go_caches:
+              build_cache_key_prefix: << parameters.build_cache_key_prefix >>-<< parameters.go_os_archs_to_build >>
+              build_cache_location: << parameters.build_cache_location >>
+              go_command: << parameters.go_command >>
+              go_sum_file: << parameters.go_sum_file >>
+              mod_cache_key_prefix: << parameters.mod_cache_key_prefix >>
+              mod_cache_location: << parameters.mod_cache_location >>
+              setup_steps:
+                - steps: << parameters.setup_steps >>
+                - go-dist/setup_go_dist:
+                    cache_key_prefix: << parameters.go_dists_cache_key_prefix >>
+                    go_dist_download_url_prefix: << parameters.go_dist_download_url_prefix >>
+                    go_dists_cache_dir: << parameters.go_dists_cache_dir >>
+                    go_dists_dir: << parameters.go_dists_dir >>
+                    go_os_arch: << parameters.go_os_arch >>
+                    go_version: << parameters.go_version >>
+              steps:
+                - go-dist/install_go_std:
+                    go_command: << parameters.go_command >>
+                    go_os_archs_to_build: << parameters.go_os_archs_to_build >>
+                - run:
+                    command: |
+                      "${PARAM_GO_COMMAND}" list -m
+                    environment:
+                      GOTOOLCHAIN: local
+                      PARAM_GO_COMMAND: << parameters.go_command >>
+                      PARAM_GO_DISTS_DIR: << parameters.go_dists_dir >>
+                    name: 'go-jobs/run_godel_steps: Verify that go version is compatible with project'
+                - godel/cache:
+                    cache_key_prefix: << parameters.godel_cache_key_prefix >>
+                    cache_location: << parameters.godel_cache_location >>
+                - steps: << parameters.steps >>
+    jobs:
+      circle_all:
+        description: |
+          Placeholder job used to signal that all required jobs have completed.
+        docker:
+          - image: << parameters.image >>
+        parameters:
+          image:
+            default: ""
+            description: |
+              The image to use for the executor.
+              
+              Generally, the recommendation is to use the latest version of the "busybox" image. However, this parameter does
+              not specify a default value in order to protect against consumers inadvertently getting locked in to an old
+              version.
+            type: string
+        resource_class: small
+        steps:
+          - run:
+              command: echo "All required jobs finished successfully"
+              name: All required jobs finished successfully
+      godel_build:
+        description: |
+          Job that runs "./godelw build" for a repository and stores its output.
+        environment:
+          PARAM_DEBUG_ORB: << parameters.enable_debug_orb >>
+        executor: << parameters.executor >>
+        parameters:
+          build_args:
+            default: ""
+            description: |
+              Arguments to pass to the "./godelw build" command.
+            type: string
+          build_cache_key_prefix:
+            default: v3
+            description: |
+              The prefix for the cache key. Is generally considered immutable, but the value can be changed to intentionally
+              invalidate the cache.
+            type: string
+          build_cache_location:
+            default: ~/.cache/go-build
+            description: |
+              The location of the go build cache directory.
+            type: string
+          enable_debug_orb:
+            default: ""
+            description: |
+              If non-empty, enables debugging output for the orb scripts.
+            type: string
+          executor:
+            description: |
+              The executor to use for the job.
+            type: executor
+          go_command:
+            default: go
+            description: |
+              The command to execute to run "go".
+            type: string
+          go_dist_download_url_prefix:
+            default: https://golang.org/dl/
+            description: |
+              The URL prefix for downloading a go distribution. Used if the script needs to download a Go distribution. The URL
+              that is used for downloads is ${go-dist-download-url-prefix}${go-version}.${go-os-arch}.tar.gz. The default value
+              uses the official public Golang site, but this value can be changed to use alternate download URLs such as
+              internal mirrors.
+            type: string
+          go_dists_cache_dir:
+            default: /go/go-dists-cache
+            description: |
+              The directory that acts as a cache for go distributions. If non-empty, if the command needs a particular Go
+              distribution and it is not in the ${go-dists-dir} directory, it is checked for in this directory. If it exists, it
+              is copied to the distributions directory. If the script downloads the distribution, it places it in this directory
+              as well as the ${go-dists-dir} directory. The names of the distribution directories in this directory are the go
+              version for the distribution. If this value is non-empty, it is saved and restored as part of CircleCI caching if
+              the "go_version" parameter is non-empty.
+            type: string
+          go_dists_cache_key_prefix:
+            default: v1
+            description: |
+              The prefix for the go distributions cache key. Is generally considered immutable, but the value can be changed to
+              intentionally invalidate the cache.
+            type: string
+          go_dists_dir:
+            default: /go/go-dists
+            description: |
+              The directory in which go distributions are stored. The command ensures that the "go" directory in this directory
+              is the Go distribution directory for the desired version (or a symlink to that directory). This directory is also
+              used to store full Go distributions, where the name of the Go distribution directory is the Go version (for
+              example, "go1.23.1").
+            type: string
+          go_os_arch:
+            default: linux-amd64
+            description: |
+              The OS/Architecture for the distribution.
+            type: string
+          go_os_archs_to_build:
+            default: ""
+            description: |
+              The OS/Architecture combinations for which the standard library should be built and installed. Specified as
+              "${GOOS}-${GOARCH}" -- for example, "linux-amd64". Can be comma-separated to specify multiple OS/Architecture
+              combinations -- for example, "linux-amd64,darwin-arm64". If blank, uses the OS/Architecture of the environment.
+            type: string
+          go_sum_file:
+            default: go.sum
+            description: |
+              The path to the "go.sum" file. The checksum for this file is used as part of the cache key.
+            type: string
+          go_version:
+            default: ""
+            description: |
+              If non-empty, determines the value of the go distribution that is used as the toolchain. If empty, assumes that
+              the "go" is already available as an executable in PATH. This should be the full Go version (for example,
+              "go1.23.1", "go1.23rc1", etc.)
+            type: string
+          godel_build_cache_dir:
+            default: out/build
+            description: |
+              The path to the directory that contains build outputs that should be cached/stored after the operation.
+              Used to persist build outputs so that later steps that use the outputs don't have to rebuild them.
+            type: string
+          godel_cache_key_prefix:
+            default: v1
+            description: |
+              The prefix for the cache key. Is generally considered immutable, but the value can be changed to intentionally
+              invalidate the cache.
+            type: string
+          godel_cache_location:
+            default: ~/.godel
+            description: |
+              The location of the Go cache directory.
+            type: string
+          mod_cache_key_prefix:
+            default: v3
+            description: |
+              The prefix for the cache key. Is generally considered immutable, but the value can be changed to intentionally
+              invalidate the cache.
+            type: string
+          mod_cache_location:
+            default: /home/circleci/go/pkg/mod
+            description: |
+              The location of the go module cache directory.
+            type: string
+          run_docker_build:
+            default: false
+            description: |
+              If true, then runs "./godelw docker build" as part of the job.
+            type: boolean
+          setup_steps:
+            default:
+              - default_setup_steps
+            description: |
+              The steps to run before caches are set up. The default value checks out the repository, deletes unrelated tags,
+              and sets up the JAVA_HOME environment variable.
+            type: steps
+        steps:
+          - run_godel_steps:
+              build_cache_key_prefix: << parameters.build_cache_key_prefix >>
+              build_cache_location: << parameters.build_cache_location >>
+              go_command: << parameters.go_command >>
+              go_dist_download_url_prefix: << parameters.go_dist_download_url_prefix >>
+              go_dists_cache_dir: << parameters.go_dists_cache_dir >>
+              go_dists_cache_key_prefix: << parameters.go_dists_cache_key_prefix >>
+              go_dists_dir: << parameters.go_dists_dir >>
+              go_os_arch: << parameters.go_os_arch >>
+              go_os_archs_to_build: << parameters.go_os_archs_to_build >>
+              go_sum_file: << parameters.go_sum_file >>
+              go_version: << parameters.go_version >>
+              godel_cache_key_prefix: << parameters.godel_cache_key_prefix >>
+              godel_cache_location: << parameters.godel_cache_location >>
+              mod_cache_key_prefix: << parameters.mod_cache_key_prefix >>
+              mod_cache_location: << parameters.mod_cache_location >>
+              setup_steps: << parameters.setup_steps >>
+              steps:
+                - run:
+                    command: ./godelw build << parameters.build_args >>
+                    name: 'go-jobs/godel_build: Run "./godelw build"'
+                - run:
+                    command: ./godelw mod -- -v
+                    name: 'go-jobs/godel_build: Run "./godelw mod"'
+                - when:
+                    condition: << parameters.godel_build_cache_dir >>
+                    steps:
+                      - save_cache:
+                          key: v1-<< parameters.godel_build_cache_dir >>-{{ .Environment.CIRCLE_WORKFLOW_ID }}-{{ .Environment.CIRCLE_SHA1 }}
+                          name: 'go-jobs/godel_build: Save godel build outputs cache at << parameters.godel_build_cache_dir >>'
+                          paths:
+                            - << parameters.godel_build_cache_dir >>
+                - when:
+                    condition: << parameters.run_docker_build >>
+                    steps:
+                      - setup_remote_docker:
+                          docker_layer_caching: true
+                      - run:
+                          command: |
+                            ./godelw docker build --verbose
+                          name: 'go-jobs/godel_build: Run "./godelw docker build"'
+      godel_dist:
+        description: |
+          Job that runs "./godelw dist" for a repository after restoring the output from a build step.
+        environment:
+          PARAM_DEBUG_ORB: << parameters.enable_debug_orb >>
+        executor: << parameters.executor >>
+        parameters:
+          build_cache_key_prefix:
+            default: v3
+            description: |
+              The prefix for the cache key. Is generally considered immutable, but the value can be changed to intentionally
+              invalidate the cache.
+            type: string
+          build_cache_location:
+            default: ~/.cache/go-build
+            description: |
+              The location of the go build cache directory.
+            type: string
+          enable_debug_orb:
+            default: ""
+            description: |
+              If non-empty, enables debugging output for the orb scripts.
+            type: string
+          executor:
+            description: |
+              The executor to use for the job.
+            type: executor
+          go_command:
+            default: go
+            description: |
+              The command to execute to run "go".
+            type: string
+          go_dist_download_url_prefix:
+            default: https://golang.org/dl/
+            description: |
+              The URL prefix for downloading a go distribution. Used if the script needs to download a Go distribution. The URL
+              that is used for downloads is ${go-dist-download-url-prefix}${go-version}.${go-os-arch}.tar.gz. The default value
+              uses the official public Golang site, but this value can be changed to use alternate download URLs such as
+              internal mirrors.
+            type: string
+          go_dists_cache_dir:
+            default: /go/go-dists-cache
+            description: |
+              The directory that acts as a cache for go distributions. If non-empty, if the command needs a particular Go
+              distribution and it is not in the ${go-dists-dir} directory, it is checked for in this directory. If it exists, it
+              is copied to the distributions directory. If the script downloads the distribution, it places it in this directory
+              as well as the ${go-dists-dir} directory. The names of the distribution directories in this directory are the go
+              version for the distribution. If this value is non-empty, it is saved and restored as part of CircleCI caching if
+              the "go_version" parameter is non-empty.
+            type: string
+          go_dists_cache_key_prefix:
+            default: v1
+            description: |
+              The prefix for the go distributions cache key. Is generally considered immutable, but the value can be changed to
+              intentionally invalidate the cache.
+            type: string
+          go_dists_dir:
+            default: /go/go-dists
+            description: |
+              The directory in which go distributions are stored. The command ensures that the "go" directory in this directory
+              is the Go distribution directory for the desired version (or a symlink to that directory). This directory is also
+              used to store full Go distributions, where the name of the Go distribution directory is the Go version (for
+              example, "go1.23.1").
+            type: string
+          go_os_arch:
+            default: linux-amd64
+            description: |
+              The OS/Architecture for the distribution.
+            type: string
+          go_os_archs_to_build:
+            default: ""
+            description: |
+              The OS/Architecture combinations for which the standard library should be built and installed. Specified as
+              "${GOOS}-${GOARCH}" -- for example, "linux-amd64". Can be comma-separated to specify multiple OS/Architecture
+              combinations -- for example, "linux-amd64,darwin-arm64". If blank, uses the OS/Architecture of the environment.
+            type: string
+          go_sum_file:
+            default: go.sum
+            description: |
+              The path to the "go.sum" file. The checksum for this file is used as part of the cache key.
+            type: string
+          go_version:
+            default: ""
+            description: |
+              If non-empty, determines the value of the go distribution that is used as the toolchain. If empty, assumes that
+              the "go" is already available as an executable in PATH. This should be the full Go version (for example,
+              "go1.23.1", "go1.23rc1", etc.)
+            type: string
+          godel_build_cache_dir:
+            default: out/build
+            description: |
+              The path to the directory that contains build outputs that should be restored.
+            type: string
+          godel_cache_key_prefix:
+            default: v1
+            description: |
+              The prefix for the cache key. Is generally considered immutable, but the value can be changed to intentionally
+              invalidate the cache.
+            type: string
+          godel_cache_location:
+            default: ~/.godel
+            description: |
+              The location of the Go cache directory.
+            type: string
+          godel_dist_cache_dir:
+            default: out/dist
+            description: |
+              The path to the directory that contains dist outputs that should be cached/stored after the operation.
+              Used to persist build outputs so that later steps that use the outputs don't have to recreate them.
+            type: string
+          mod_cache_key_prefix:
+            default: v3
+            description: |
+              The prefix for the cache key. Is generally considered immutable, but the value can be changed to intentionally
+              invalidate the cache.
+            type: string
+          mod_cache_location:
+            default: /home/circleci/go/pkg/mod
+            description: |
+              The location of the go module cache directory.
+            type: string
+          setup_steps:
+            default:
+              - default_setup_steps
+            description: |
+              The steps to run before caches are set up. The default value checks out the repository, deletes unrelated tags,
+              and sets up the JAVA_HOME environment variable.
+            type: steps
+          steps:
+            default: [ ]
+            description: |
+              The steps to run after restoring the build cache and before saving it.
+            type: steps
+        steps:
+          - run_godel_steps:
+              build_cache_key_prefix: << parameters.build_cache_key_prefix >>
+              build_cache_location: << parameters.build_cache_location >>
+              go_command: << parameters.go_command >>
+              go_dist_download_url_prefix: << parameters.go_dist_download_url_prefix >>
+              go_dists_cache_dir: << parameters.go_dists_cache_dir >>
+              go_dists_cache_key_prefix: << parameters.go_dists_cache_key_prefix >>
+              go_dists_dir: << parameters.go_dists_dir >>
+              go_os_arch: << parameters.go_os_arch >>
+              go_os_archs_to_build: << parameters.go_os_archs_to_build >>
+              go_sum_file: << parameters.go_sum_file >>
+              go_version: << parameters.go_version >>
+              godel_cache_key_prefix: << parameters.godel_cache_key_prefix >>
+              godel_cache_location: << parameters.godel_cache_location >>
+              mod_cache_key_prefix: << parameters.mod_cache_key_prefix >>
+              mod_cache_location: << parameters.mod_cache_location >>
+              setup_steps: << parameters.setup_steps >>
+              steps:
+                - when:
+                    condition: << parameters.godel_build_cache_dir >>
+                    steps:
+                      - restore_cache_with_mod_time:
+                          cache_dir: << parameters.godel_build_cache_dir >>
+                - run:
+                    command: ./godelw dist
+                    name: Run ./godelw dist
+                - when:
+                    condition: << parameters.godel_dist_cache_dir >>
+                    steps:
+                      - save_cache:
+                          key: v1-<< parameters.godel_dist_cache_dir >>-{{ .Environment.CIRCLE_WORKFLOW_ID }}-{{ .Environment.CIRCLE_SHA1 }}
+                          name: 'go-jobs/godel_dist: Save godel dist outputs cache at << parameters.godel_dist_cache_dir >>'
+                          paths:
+                            - << parameters.godel_dist_cache_dir >>
+      godel_test:
+        description: |
+          Job that runs "./godelw test" for a repository.
+        environment:
+          PARAM_DEBUG_ORB: << parameters.enable_debug_orb >>
+        executor: << parameters.executor >>
+        parameters:
+          build_cache_key_prefix:
+            default: v3
+            description: |
+              The prefix for the cache key. Is generally considered immutable, but the value can be changed to intentionally
+              invalidate the cache.
+            type: string
+          build_cache_location:
+            default: ~/.cache/go-build
+            description: |
+              The location of the go build cache directory.
+            type: string
+          enable_debug_orb:
+            default: ""
+            description: |
+              If non-empty, enables debugging output for the orb scripts.
+            type: string
+          executor:
+            description: |
+              The executor to use for the job.
+            type: executor
+          go_command:
+            default: go
+            description: |
+              The command to execute to run "go".
+            type: string
+          go_dist_download_url_prefix:
+            default: https://golang.org/dl/
+            description: |
+              The URL prefix for downloading a go distribution. Used if the script needs to download a Go distribution. The URL
+              that is used for downloads is ${go-dist-download-url-prefix}${go-version}.${go-os-arch}.tar.gz. The default value
+              uses the official public Golang site, but this value can be changed to use alternate download URLs such as
+              internal mirrors.
+            type: string
+          go_dists_cache_dir:
+            default: /go/go-dists-cache
+            description: |
+              The directory that acts as a cache for go distributions. If non-empty, if the command needs a particular Go
+              distribution and it is not in the ${go-dists-dir} directory, it is checked for in this directory. If it exists, it
+              is copied to the distributions directory. If the script downloads the distribution, it places it in this directory
+              as well as the ${go-dists-dir} directory. The names of the distribution directories in this directory are the go
+              version for the distribution. If this value is non-empty, it is saved and restored as part of CircleCI caching if
+              the "go_version" parameter is non-empty.
+            type: string
+          go_dists_cache_key_prefix:
+            default: v1
+            description: |
+              The prefix for the go distributions cache key. Is generally considered immutable, but the value can be changed to
+              intentionally invalidate the cache.
+            type: string
+          go_dists_dir:
+            default: /go/go-dists
+            description: |
+              The directory in which go distributions are stored. The command ensures that the "go" directory in this directory
+              is the Go distribution directory for the desired version (or a symlink to that directory). This directory is also
+              used to store full Go distributions, where the name of the Go distribution directory is the Go version (for
+              example, "go1.23.1").
+            type: string
+          go_os_arch:
+            default: linux-amd64
+            description: |
+              The OS/Architecture for the distribution.
+            type: string
+          go_os_archs_to_build:
+            default: ""
+            description: |
+              The OS/Architecture combinations for which the standard library should be built and installed. Specified as
+              "${GOOS}-${GOARCH}" -- for example, "linux-amd64". Can be comma-separated to specify multiple OS/Architecture
+              combinations -- for example, "linux-amd64,darwin-arm64". If blank, uses the OS/Architecture of the environment.
+            type: string
+          go_sum_file:
+            default: go.sum
+            description: |
+              The path to the "go.sum" file. The checksum for this file is used as part of the cache key.
+            type: string
+          go_version:
+            default: ""
+            description: |
+              If non-empty, determines the value of the go distribution that is used as the toolchain. If empty, assumes that
+              the "go" is already available as an executable in PATH. This should be the full Go version (for example,
+              "go1.23.1", "go1.23rc1", etc.)
+            type: string
+          godel_cache_key_prefix:
+            default: v1
+            description: |
+              The prefix for the cache key. Is generally considered immutable, but the value can be changed to intentionally
+              invalidate the cache.
+            type: string
+          godel_cache_location:
+            default: ~/.godel
+            description: |
+              The location of the Go cache directory.
+            type: string
+          mod_cache_key_prefix:
+            default: v3
+            description: |
+              The prefix for the cache key. Is generally considered immutable, but the value can be changed to intentionally
+              invalidate the cache.
+            type: string
+          mod_cache_location:
+            default: /home/circleci/go/pkg/mod
+            description: |
+              The location of the go module cache directory.
+            type: string
+          setup_steps:
+            default:
+              - default_setup_steps
+            description: |
+              The steps to run before caches are set up. The default value checks out the repository, deletes unrelated tags,
+              and sets up the JAVA_HOME environment variable.
+            type: steps
+          steps:
+            default: [ ]
+            description: |
+              The steps to run after restoring the build cache and before saving it.
+            type: steps
+          test_args:
+            default: -vet=off
+            description: |
+              Arguments to pass to the "./godelw test" command.
+              
+              These arguments are passed after a "--", so are all interpreted as positional arguments to the "./godelw test"
+              command. The "test_flags" parameter should be use to specify any flags on the "./godelw test" command itself.
+            type: string
+          test_file_name_addition:
+            default: ""
+            description: |
+              If specified, this string is appended to the file name generated for tests. By default, the output file name for
+              tests is "${CIRCLE_PROJECT_REPONAME}-tests.xml". If this parameter is specified, the output file name becomes
+              "${CIRCLE_PROJECT_REPONAME}-${test_file_name_addition}-tests.xml". Note that a leading hyphen is automatically
+              added, so the value of this parameter does not need a leading hyphen.
+            type: string
+          test_flags:
+            default: ""
+            description: |
+              Flags provided to the "./godelw test" command.
+              
+              These flags are provided after "./godelw test" but before a "--", and are thus interpreted as flags on the
+              "./godelw test" command. These flags are additive to the flags/configuration set by the command itself.
+            type: string
+        steps:
+          - run_godel_steps:
+              build_cache_key_prefix: << parameters.build_cache_key_prefix >>
+              build_cache_location: << parameters.build_cache_location >>
+              go_command: << parameters.go_command >>
+              go_dist_download_url_prefix: << parameters.go_dist_download_url_prefix >>
+              go_dists_cache_dir: << parameters.go_dists_cache_dir >>
+              go_dists_cache_key_prefix: << parameters.go_dists_cache_key_prefix >>
+              go_dists_dir: << parameters.go_dists_dir >>
+              go_os_arch: << parameters.go_os_arch >>
+              go_os_archs_to_build: << parameters.go_os_archs_to_build >>
+              go_sum_file: << parameters.go_sum_file >>
+              go_version: << parameters.go_version >>
+              godel_cache_key_prefix: << parameters.godel_cache_key_prefix >>
+              godel_cache_location: << parameters.godel_cache_location >>
+              mod_cache_key_prefix: << parameters.mod_cache_key_prefix >>
+              mod_cache_location: << parameters.mod_cache_location >>
+              setup_steps: << parameters.setup_steps >>
+              steps:
+                - godel/test:
+                    test_args: << parameters.test_args >>
+                    test_file_name_addition: << parameters.test_file_name_addition >>
+                    test_flags: << parameters.test_flags >>
+      godel_verify:
+        description: |
+          Job that runs "./godelw verify" for a repository.
+        environment:
+          PARAM_DEBUG_ORB: << parameters.enable_debug_orb >>
+        executor: << parameters.executor >>
+        parameters:
+          build_cache_key_prefix:
+            default: v3
+            description: |
+              The prefix for the cache key. Is generally considered immutable, but the value can be changed to intentionally
+              invalidate the cache.
+            type: string
+          build_cache_location:
+            default: ~/.cache/go-build
+            description: |
+              The location of the go build cache directory.
+            type: string
+          enable_debug_orb:
+            default: ""
+            description: |
+              If non-empty, enables debugging output for the orb scripts.
+            type: string
+          executor:
+            description: |
+              The executor to use for the job.
+            type: executor
+          go_command:
+            default: go
+            description: |
+              The command to execute to run "go".
+            type: string
+          go_dist_download_url_prefix:
+            default: https://golang.org/dl/
+            description: |
+              The URL prefix for downloading a go distribution. Used if the script needs to download a Go distribution. The URL
+              that is used for downloads is ${go-dist-download-url-prefix}${go-version}.${go-os-arch}.tar.gz. The default value
+              uses the official public Golang site, but this value can be changed to use alternate download URLs such as
+              internal mirrors.
+            type: string
+          go_dists_cache_dir:
+            default: /go/go-dists-cache
+            description: |
+              The directory that acts as a cache for go distributions. If non-empty, if the command needs a particular Go
+              distribution and it is not in the ${go-dists-dir} directory, it is checked for in this directory. If it exists, it
+              is copied to the distributions directory. If the script downloads the distribution, it places it in this directory
+              as well as the ${go-dists-dir} directory. The names of the distribution directories in this directory are the go
+              version for the distribution. If this value is non-empty, it is saved and restored as part of CircleCI caching if
+              the "go_version" parameter is non-empty.
+            type: string
+          go_dists_cache_key_prefix:
+            default: v1
+            description: |
+              The prefix for the go distributions cache key. Is generally considered immutable, but the value can be changed to
+              intentionally invalidate the cache.
+            type: string
+          go_dists_dir:
+            default: /go/go-dists
+            description: |
+              The directory in which go distributions are stored. The command ensures that the "go" directory in this directory
+              is the Go distribution directory for the desired version (or a symlink to that directory). This directory is also
+              used to store full Go distributions, where the name of the Go distribution directory is the Go version (for
+              example, "go1.23.1").
+            type: string
+          go_os_arch:
+            default: linux-amd64
+            description: |
+              The OS/Architecture for the distribution.
+            type: string
+          go_os_archs_to_build:
+            default: ""
+            description: |
+              The OS/Architecture combinations for which the standard library should be built and installed. Specified as
+              "${GOOS}-${GOARCH}" -- for example, "linux-amd64". Can be comma-separated to specify multiple OS/Architecture
+              combinations -- for example, "linux-amd64,darwin-arm64". If blank, uses the OS/Architecture of the environment.
+            type: string
+          go_sum_file:
+            default: go.sum
+            description: |
+              The path to the "go.sum" file. The checksum for this file is used as part of the cache key.
+            type: string
+          go_version:
+            default: ""
+            description: |
+              If non-empty, determines the value of the go distribution that is used as the toolchain. If empty, assumes that
+              the "go" is already available as an executable in PATH. This should be the full Go version (for example,
+              "go1.23.1", "go1.23rc1", etc.)
+            type: string
+          godel_cache_key_prefix:
+            default: v1
+            description: |
+              The prefix for the cache key. Is generally considered immutable, but the value can be changed to intentionally
+              invalidate the cache.
+            type: string
+          godel_cache_location:
+            default: ~/.godel
+            description: |
+              The location of the Go cache directory.
+            type: string
+          mod_cache_key_prefix:
+            default: v3
+            description: |
+              The prefix for the cache key. Is generally considered immutable, but the value can be changed to intentionally
+              invalidate the cache.
+            type: string
+          mod_cache_location:
+            default: /home/circleci/go/pkg/mod
+            description: |
+              The location of the go module cache directory.
+            type: string
+          pre_steps:
+            default: [ ]
+            description: |
+              The steps to run after restoring all caches but before running the godel verify command.
+            type: steps
+          setup_steps:
+            default:
+              - default_setup_steps
+            description: |
+              The steps to run before caches are set up. The default value checks out the repository and sets up permissions.
+            type: steps
+          skip_tests:
+            default: false
+            description: |
+              If true, tests are skipped for godel verify.
+            type: boolean
+          verify_args:
+            default: --parallel=true
+            description: |
+              Arguments to pass to the "./godelw verify" command.
+            type: string
+        steps:
+          - run_godel_steps:
+              build_cache_key_prefix: << parameters.build_cache_key_prefix >>
+              build_cache_location: << parameters.build_cache_location >>
+              go_command: << parameters.go_command >>
+              go_dist_download_url_prefix: << parameters.go_dist_download_url_prefix >>
+              go_dists_cache_dir: << parameters.go_dists_cache_dir >>
+              go_dists_cache_key_prefix: << parameters.go_dists_cache_key_prefix >>
+              go_dists_dir: << parameters.go_dists_dir >>
+              go_os_arch: << parameters.go_os_arch >>
+              go_os_archs_to_build: << parameters.go_os_archs_to_build >>
+              go_sum_file: << parameters.go_sum_file >>
+              go_version: << parameters.go_version >>
+              godel_cache_key_prefix: << parameters.godel_cache_key_prefix >>
+              godel_cache_location: << parameters.godel_cache_location >>
+              mod_cache_key_prefix: << parameters.mod_cache_key_prefix >>
+              mod_cache_location: << parameters.mod_cache_location >>
+              setup_steps: << parameters.setup_steps >>
+              steps:
+                - steps: << parameters.pre_steps >>
+                - when:
+                    condition: << parameters.skip_tests >>
+                    steps:
+                      - godel/verify:
+                          test_results_location: ""
+                          verify_args: << parameters.verify_args >>
+                - unless:
+                    condition: << parameters.skip_tests >>
+                    steps:
+                      - godel/verify:
+                          verify_args: << parameters.verify_args >>
+    examples:
+      example:
+        description: |
+          Use go-jobs in workflows.
+        usage:
+          version: "2.1"
+          orbs:
+            go-jobs: palantir/go-jobs@0.17.0
+          workflows: null
 
 image-version: &image-version "cimg/go:1.25.1-browsers"
 
