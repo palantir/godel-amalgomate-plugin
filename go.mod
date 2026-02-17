@@ -1,6 +1,6 @@
 module github.com/palantir/godel-amalgomate-plugin
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/palantir/amalgomate v1.52.0
