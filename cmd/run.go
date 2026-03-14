@@ -5,7 +5,6 @@
 package cmd
 
 import (
-	"io/ioutil"
 	"os"
 
 	"github.com/palantir/godel-amalgomate-plugin/amalgomateplugin"
@@ -40,7 +39,7 @@ func init() {
 }
 
 func readConfig(cfgFile string) (config.Config, error) {
-	cfgBytes, err := ioutil.ReadFile(cfgFile)
+	cfgBytes, err := os.ReadFile(cfgFile)
 	if err != nil {
 		return config.Config{}, errors.Wrapf(err, "failed to read file")
 	}
