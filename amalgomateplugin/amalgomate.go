@@ -72,7 +72,7 @@ func Run(param Param, verify bool, stdout io.Writer) error {
 		_, _ = fmt.Fprintf(stdout, "amalgomator output differs from what currently exists: %v\n", verifyFailedKeys)
 		for _, currKey := range verifyFailedKeys {
 			_, _ = fmt.Fprintf(stdout, "%s%s:\n", strings.Repeat(" ", indentLen), currKey)
-			for _, currErrLine := range strings.Split(verifyFailedErrors[currKey], "\n") {
+			for currErrLine := range strings.SplitSeq(verifyFailedErrors[currKey], "\n") {
 				_, _ = fmt.Fprintf(stdout, "%s%s\n", strings.Repeat(" ", indentLen*2), currErrLine)
 			}
 		}
