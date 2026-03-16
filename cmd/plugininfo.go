@@ -27,7 +27,7 @@ var (
 			pluginapi.TaskInfoCommand("run"),
 			pluginapi.TaskInfoVerifyOptions(
 				// by default, run after "generate" but before next built-in task
-				pluginapi.VerifyOptionsOrdering(intVar(verifyorder.Generate+50)),
+				pluginapi.VerifyOptionsOrdering(new(verifyorder.Generate+50)),
 				pluginapi.VerifyOptionsApplyFalseArgs("--"+VerifyFlagName),
 			),
 		),
@@ -37,8 +37,3 @@ var (
 		),
 	)
 )
-
-//go:fix inline
-func intVar(val int) *int {
-	return new(val)
-}
