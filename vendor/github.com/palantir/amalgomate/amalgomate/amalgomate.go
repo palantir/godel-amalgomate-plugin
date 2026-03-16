@@ -10,7 +10,6 @@ import (
 	"go/parser"
 	"go/printer"
 	"go/token"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -19,6 +18,13 @@ import (
 )
 
 func Run(cfg Config, outputDir, pkg string) error {
+	// verify that configuration is valid. Although this is checked by [LoadConfig], perform the check here as well to
+	// ensure that Config that comes from other sources are also validated. It is important to validate this because the
+	// directory specified by cfg.AmalgomateDir is removed before running amalgomate so invalid values can be extremely dangerous.
+	if err := cfg.Validate(); err != nil {
+		return errors.Wrapf(err, "configuration is not valid")
+	}
+
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		return errors.Wrapf(err, "failed to ensure that output directory exists: %s", outputDir)
 	}
@@ -36,9 +42,11 @@ func Run(cfg Config, outputDir, pkg string) error {
 		return errors.Wrapf(err, "failed to repackage files specified in configuration")
 	}
 
-	// write output file that imports and uses repackaged files
-	if err := writeOutputGoFile(cfg, outputDir, pkg); err != nil {
-		return errors.Wrapf(err, "failed to write output file")
+	if !cfg.RepackageOnly {
+		// write output file that imports and uses repackaged files
+		if err := writeOutputGoFile(cfg, outputDir, pkg); err != nil {
+			return errors.Wrapf(err, "failed to write output file")
+		}
 	}
 
 	return nil
@@ -156,7 +164,7 @@ func writeOutputGoFile(config Config, outputDir, packageName string) error {
 
 	// write output to file
 	outputFilePath := filepath.Join(outputDir, packageName+".go")
-	if err := ioutil.WriteFile(outputFilePath, outputWithSpaces, 0644); err != nil {
+	if err := os.WriteFile(outputFilePath, outputWithSpaces, 0644); err != nil {
 		return errors.Wrapf(err, "failed to write output to path: %s", outputFilePath)
 	}
 
