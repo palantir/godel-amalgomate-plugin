@@ -2,7 +2,7 @@ module github.com/palantir/godel-amalgomate-plugin
 
 go 1.26.0
 
-toolchain go1.26.3
+toolchain go1.26.4
 
 require (
 	github.com/palantir/amalgomate v1.56.0
