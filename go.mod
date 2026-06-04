@@ -5,7 +5,7 @@ go 1.26.0
 toolchain go1.26.4
 
 require (
-	github.com/palantir/amalgomate v1.56.0
+	github.com/palantir/amalgomate v1.57.0
 	github.com/palantir/godel/pkg/products/v2 v2.0.0
 	github.com/palantir/godel/v2 v2.156.0
 	github.com/palantir/pkg/cobracli v1.3.0
