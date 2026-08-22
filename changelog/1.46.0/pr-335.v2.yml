@@ -1,5 +1,0 @@
-type: improvement
-improvement:
-  description: Makes it so that amalgomated directories are writable.
-  links:
-  - https://github.com/palantir/godel-amalgomate-plugin/pull/335
