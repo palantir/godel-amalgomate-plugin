@@ -7,7 +7,7 @@ toolchain go1.27.1
 require (
 	github.com/palantir/amalgomate v1.60.0
 	github.com/palantir/godel/pkg/products/v2 v2.0.0
-	github.com/palantir/godel/v2 v2.180.0
+	github.com/palantir/godel/v2 v2.181.0
 	github.com/palantir/pkg/cobracli v1.4.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.10.2
