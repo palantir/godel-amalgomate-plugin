@@ -36,7 +36,7 @@ require (
 	github.com/nwaples/rardecode v1.1.3 // indirect
 	github.com/otiai10/copy v1.14.1 // indirect
 	github.com/otiai10/mint v1.6.3 // indirect
-	github.com/palantir/pkg v1.1.0 // indirect
+	github.com/palantir/pkg v1.2.0 // indirect
 	github.com/palantir/pkg/matcher v1.3.0 // indirect
 	github.com/palantir/pkg/pkgpath v1.4.0 // indirect
 	github.com/palantir/pkg/specdir v1.3.0 // indirect
