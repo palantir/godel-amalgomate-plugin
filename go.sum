@@ -62,8 +62,8 @@ github.com/palantir/amalgomate v1.60.0 h1:fPnGAineJVBVGc4fb189DKG4F7TMrxtCtxVz5i
 github.com/palantir/amalgomate v1.60.0/go.mod h1:zbtFfsUm5AChTTtysCBAYHqVwkiHM5MSw5QTGQvRjGU=
 github.com/palantir/godel/pkg/products/v2 v2.0.0 h1:E3DuAEA1yotLLDQt7vIrYRapRwXRyW6u8Yuq2p/qyLs=
 github.com/palantir/godel/pkg/products/v2 v2.0.0/go.mod h1:SaLUycZLVP5qV6mL9MWG3jkX4dS23lJnzpubTGAV4FU=
-github.com/palantir/godel/v2 v2.180.0 h1:xJ193lkvD7nx7Y0jh3gtb4mcPOEQuMQdnh6wfl3voyU=
-github.com/palantir/godel/v2 v2.180.0/go.mod h1:pRr7LqZSGxZ8IOQ/QzBBDj3dtGUa47VshNMUx74IqZM=
+github.com/palantir/godel/v2 v2.181.0 h1:7iJee4wKVwatnhzyvrJ9Byx4rpYTLI5tn1w9WATCTHg=
+github.com/palantir/godel/v2 v2.181.0/go.mod h1:TZiGeiMnrapKt5fUuIvFMMIP0AsMrAuHbvn7W2sanww=
 github.com/palantir/pkg v1.2.0 h1:GxXiXLcayV/JNptEyBIDvUrd1NRzI+TwpsL64sufrd8=
 github.com/palantir/pkg v1.2.0/go.mod h1:y8Dt3/qSZjq+0pLBeCsxXDqzby3G08bw85gZmJm5mwA=
 github.com/palantir/pkg/cobracli v1.4.0 h1:pMSAaz3rzfkVuaGgOmrgqMkDefizoHdcXtzUroFf5u8=
