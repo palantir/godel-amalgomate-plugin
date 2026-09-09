@@ -77,8 +77,8 @@ github.com/otiai10/copy
 ## explicit; go 1.18
 github.com/otiai10/mint
 github.com/otiai10/mint/mquery
-# github.com/palantir/amalgomate v1.60.0
-## explicit; go 1.26.0
+# github.com/palantir/amalgomate v1.61.0
+## explicit; go 1.27.0
 github.com/palantir/amalgomate/amalgomate
 # github.com/palantir/godel/pkg/products/v2 v2.0.0
 ## explicit; go 1.13
@@ -128,7 +128,7 @@ github.com/palantir/pkg/specdir
 ## explicit; go 1.26.0
 github.com/palantir/witchcraft-go-error
 github.com/palantir/witchcraft-go-error/internal/errors
-# github.com/palantir/witchcraft-go-params v1.46.0
+# github.com/palantir/witchcraft-go-params v1.47.0
 ## explicit; go 1.26.0
 github.com/palantir/witchcraft-go-params
 # github.com/pierrec/lz4/v4 v4.1.29
