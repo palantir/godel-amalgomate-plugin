@@ -62,8 +62,8 @@ github.com/palantir/amalgomate v1.61.0 h1:fiYU+oHVcmtTxe2i376guJGeKppAWPK7t9R6y9
 github.com/palantir/amalgomate v1.61.0/go.mod h1:nPWNEfaRa5uHGpN7VsUtJ6EAPcUIVilYDSKGJvkxLTU=
 github.com/palantir/godel/pkg/products/v2 v2.0.0 h1:E3DuAEA1yotLLDQt7vIrYRapRwXRyW6u8Yuq2p/qyLs=
 github.com/palantir/godel/pkg/products/v2 v2.0.0/go.mod h1:SaLUycZLVP5qV6mL9MWG3jkX4dS23lJnzpubTGAV4FU=
-github.com/palantir/godel/v2 v2.181.0 h1:7iJee4wKVwatnhzyvrJ9Byx4rpYTLI5tn1w9WATCTHg=
-github.com/palantir/godel/v2 v2.181.0/go.mod h1:TZiGeiMnrapKt5fUuIvFMMIP0AsMrAuHbvn7W2sanww=
+github.com/palantir/godel/v2 v2.182.0 h1:n9nty8ydGBkWVJDG9s6RDZI1Oq4F6qAQTctayQzGexk=
+github.com/palantir/godel/v2 v2.182.0/go.mod h1:2RcINt5GZinduV2xVBMyrjhtj/EvFt0KdDR1MS/tTgc=
 github.com/palantir/pkg v1.2.0 h1:GxXiXLcayV/JNptEyBIDvUrd1NRzI+TwpsL64sufrd8=
 github.com/palantir/pkg v1.2.0/go.mod h1:y8Dt3/qSZjq+0pLBeCsxXDqzby3G08bw85gZmJm5mwA=
 github.com/palantir/pkg/cobracli v1.4.0 h1:pMSAaz3rzfkVuaGgOmrgqMkDefizoHdcXtzUroFf5u8=
@@ -78,8 +78,8 @@ github.com/palantir/pkg/specdir v1.4.0 h1:rhDOb2OehhLEYw7dR+gBKlT9iS2f8jlVXHa/6v
 github.com/palantir/pkg/specdir v1.4.0/go.mod h1:lccMX+mjwigJiM0XKwBeKc4gZcaSsbnx1acM4xayhCw=
 github.com/palantir/witchcraft-go-error v1.50.0 h1:qv+JXQORyI8lP+1sVkmsVrLycBEfUhOG0tU/G6A4sZs=
 github.com/palantir/witchcraft-go-error v1.50.0/go.mod h1:lkSIY+/prSOVrwk8oVbhvs9OCdnhGAO7cpmGE8IyPgE=
-github.com/palantir/witchcraft-go-params v1.47.0 h1:EUlS11YdsjDiT91xa1BQendBI2euIukGMlGs+oAw95g=
-github.com/palantir/witchcraft-go-params v1.47.0/go.mod h1:L5Wx3I3pM4plYHzQaUaO7OrBOMHGu/tZSn5HEBVZoJA=
+github.com/palantir/witchcraft-go-params v1.48.0 h1:NIEFPB5D/dUzWaAZN7mYbiw/jGEkPZvs2PvVh6H7R7w=
+github.com/palantir/witchcraft-go-params v1.48.0/go.mod h1:oqFfqNlCKYGLaBLyJB1O1UFGSiiykgMJkTcxjXDzVKs=
 github.com/pierrec/lz4/v4 v4.1.2/go.mod h1:gZWDp/Ze/IJXGXf23ltt2EXimqmTUXEy0GFuRQyBid4=
 github.com/pierrec/lz4/v4 v4.1.29 h1:CDQY6qZOLI4DW0Nx6R1vRrifrCeQHnNXkMb0hZWXFjg=
 github.com/pierrec/lz4/v4 v4.1.29/go.mod h1:EoQMVJgeeEOMsCqCzqFm2O0cJvljX2nGZjcRIPL34O4=
