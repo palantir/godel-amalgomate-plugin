@@ -42,7 +42,7 @@ require (
 	github.com/palantir/pkg/specdir v1.4.0 // indirect
 	github.com/palantir/witchcraft-go-error v1.50.0 // indirect
 	github.com/palantir/witchcraft-go-params v1.48.0 // indirect
-	github.com/pierrec/lz4/v4 v4.1.29 // indirect
+	github.com/pierrec/lz4/v4 v4.1.30 // indirect
 	github.com/rogpeppe/go-internal v1.16.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/termie/go-shutil v0.0.0-20140729215957-bcacb06fecae // indirect
